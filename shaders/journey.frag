@@ -163,8 +163,10 @@ vec3 shadeSurface(Ray ray, vec3 sunDir, float breatheFog, float breatheGlow,
   // the down-refracted sun direction. exp(-d*k), no pow.
   float sunAlign = max(dot(ray.dir, sunDir), 0.0);
   float d = 1.0 - sunAlign;                 // 0 at sun centre
-  float sunGlow = exp(-d * 22.0) * (1.6 * breatheGlow);   // tight bright disc
-  sunGlow += exp(-d * 5.0) * 0.5 * breatheGlow;           // soft halo
+  // Slender refracted disc: tight core crosses the 0.7 bloom threshold, the
+  // halo is narrow and dim so it does NOT blow out the fog into a milky cone.
+  float sunGlow = exp(-d * 60.0) * (1.4 * breatheGlow);   // tight bright core
+  sunGlow += exp(-d * 16.0) * 0.20 * breatheGlow;         // narrow dim halo
 
   // (b) Normal-based rim shimmer: grazing angles catch cold light.
   float fres = 1.0 - abs(dot(ray.dir, nrm));
@@ -207,11 +209,18 @@ vec3 godRayContribution(vec3 p, vec3 sunDir, float act1, float act2,
     float along = dot(rel, shaftDir);
     vec3 perp = rel - shaftDir * along;
     float dperp = length(perp);
-    // Cone widens with distance below the surface (along > 0 going down).
-    float radius = 0.25 + 0.14 * max(along, 0.0);
-    float shaft = exp(-(dperp / radius) * (dperp / radius) * 2.0);
-    // Fade shaft with depth so it doesn't reach infinitely far down.
-    shaft *= exp(-max(along, 0.0) * 0.10);
+
+    // SLENDER shaft: narrow, BOUNDED cone. radius stays small and its growth
+    // with depth is capped so the shaft never becomes a half-plane wedge.
+    // width ~4-6x tighter than before; pure smooth exponential of perp dist.
+    float radius = 0.10 + 0.05 * clamp(along, 0.0, 6.0);   // capped growth
+    float k = dperp / radius;
+    float shaft = exp(-k * k * 3.0);                       // tight core, ->0 fast
+
+    // Finite shaft length: bright only between the surface and a soft cutoff,
+    // smoothly windowed at both ends (no unbounded half-space).
+    shaft *= smoothstep(-1.0, 1.5, along);                 // fade in below surface
+    shaft *= 1.0 - smoothstep(7.0, 12.0, along);           // fade out with depth
 
     // .z (taken): condense the whole shaft into a bright slow-pulsing point.
     float taken = clamp(R.z, 0.0, 1.0);
@@ -219,37 +228,55 @@ vec3 godRayContribution(vec3 p, vec3 sunDir, float act1, float act2,
       float dpt = length(rel);
       float pulse = 0.6 + 0.4 * sin(uTime * 3.14159); // ~2s period
       float pt = exp(-dpt * 5.5) * pulse;
-      shaft = mix(shaft, pt * 3.0, taken);
+      shaft = mix(shaft, pt * 2.0, taken);
     }
 
     // Colder + slightly brighter as Act II deepens; breathe modulates glow.
     vec3 tint = mix(RAY_CYAN, RAY_CYAN * vec3(0.8, 0.95, 1.15), act2);
-    acc += tint * shaft * breatheGlow;
+    // Peak tuned so only the shaft CORE crosses the 0.7 bloom threshold.
+    acc += tint * shaft * 0.9 * breatheGlow;
   }
   // Rays fade with the surface in Act I, thin out but persist in Act II.
   return acc * mix(1.0, 0.7, act2);
 }
 
-// ---- Act II: bioluminescent motes (grid-cell hashing, 1 cell/sample) ----
-// Sparse 3D sparkle advected slowly upward. One cell lookup per march sample.
+// ---- Act II: bioluminescent motes (grid-cell hashing) ----
+// Sparse 3D sparkle advected slowly upward. Each mote is a SOFT point with
+// FINITE support: brightness reaches ~0 well before the cell edge (influence
+// radius < 0.5 cell). We scan the 3x3x3 neighborhood so a mote near a cell
+// boundary still lights adjacent samples continuously — NO hard cell squares.
 vec3 moteField(vec3 p, float act2) {
   if (act2 < 0.01) return vec3(0.0);
   // Advect the field upward over time (motes drift up past the descending eye).
   vec3 q = p + vec3(0.0, uTime * 0.15, 0.0);
-  vec3 cell = floor(q);
-  vec3 f = q - cell;
-  // Single pseudo-cell point: jittered position + per-cell brightness.
-  float on = step(0.72, hash3(cell + 3.7));      // ~28% of cells lit — sparse
-  vec3 jitter = vec3(hash3(cell + 1.1),
-                     hash3(cell + 2.2),
-                     hash3(cell + 5.5));
-  float d = length(f - jitter);
-  float spark = exp(-d * 7.0) * on;
+  vec3 base = floor(q);
+  vec3 f = q - base;                   // position within the base cell [0,1)
+
+  float spark = 0.0;
+  // 3x3x3 = 27 cheap hash lookups, no noise octaves — well within budget.
+  for (int gz = -1; gz <= 1; gz++)
+  for (int gy = -1; gy <= 1; gy++)
+  for (int gx = -1; gx <= 1; gx++) {
+    vec3 g = vec3(float(gx), float(gy), float(gz));
+    vec3 cell = base + g;
+    // ~22% of cells lit — sparse.
+    float on = step(0.78, hash3(cell + 3.7));
+    // Jittered point inside its cell; offset into this neighbor's frame.
+    vec3 jitter = vec3(hash3(cell + 1.1),
+                       hash3(cell + 2.2),
+                       hash3(cell + 5.5));
+    vec3 pt = g + jitter;              // point position relative to base cell
+    float d = length(f - pt);
+    // Finite support: hard zero beyond R=0.45 (< half a cell), smooth to 0.
+    // smoothstep(R,0,d) guarantees exactly 0 at/after the influence radius.
+    float fall = smoothstep(0.45, 0.0, d) * exp(-d * 6.0) * on;
+    // Per-mote twinkle keyed to the cell hash.
+    float tw = 0.7 + 0.3 * sin(uTime * 2.0 + hash3(cell) * 6.28);
+    spark += fall * tw;
+  }
   // Warm-white with a pink-violet cast that grows with depth.
   vec3 tint = mix(MOTE_WARM, MOTE_PINK, act2 * 0.6);
-  // Gentle per-mote twinkle.
-  float tw = 0.7 + 0.3 * sin(uTime * 2.0 + hash3(cell) * 6.28);
-  return tint * spark * tw * act2 * 1.8;
+  return tint * spark * act2 * 2.2;
 }
 
 // ---- Act II: silhouetted flora (SDF kelp ribbons) ----
