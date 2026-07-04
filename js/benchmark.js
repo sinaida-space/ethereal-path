@@ -23,18 +23,22 @@ export async function runBenchmark(renderer) {
   const gl = renderer.gl;
   const prev = renderer.tier;
   renderer.setQuality('full');
+  // gl.finish() doesn't actually block in Chrome/ANGLE; a 1px readback is the
+  // only reliable way to wait for the GPU before timestamping.
+  const px = new Uint8Array(4);
+  const gpuSync = () => gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
 
   // Warm up: let the driver compile/upload and reach steady state.
   for (let i = 0; i < WARMUP; i++) {
     renderer.frame(i / 60, neutralState((i / WARMUP) * 0.5));
   }
-  gl.finish();
+  gpuSync();
 
   const times = [];
   for (let i = 0; i < TIMED; i++) {
     const t0 = performance.now();
     renderer.frame((WARMUP + i) / 60, neutralState(0.5));
-    gl.finish();
+    gpuSync();
     times.push(performance.now() - t0);
   }
 
