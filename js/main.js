@@ -1,15 +1,19 @@
 // main.js — boots the renderer, benchmarks the GPU, and drives the RAF loop.
 //
+// Input: js/input/tracking.js (Tracking) supplies head/hand state, starting
+// in fallback mode (pointer/keyboard/touch — see js/input/fallback.js).
+// Dev keybind 'c' attempts camera mode; #9's splash screen will own this UX.
+//
 // Temporary state (until real subsystems land):
-//   head     — follows mouse (normalized, lerped) as a stand-in for #5 tracking
 //   progress — ping-pongs 0..1 over 60s
 //   rays     — one fake ray
 //
-// Exposes window.__ep = { renderer, state } for verification.
+// Exposes window.__ep = { renderer, state, tracking } for verification.
 
 import { Renderer } from './gl/renderer.js';
 import { runBenchmark } from './benchmark.js';
 import { Camera } from './camera.js';
+import { Tracking } from './input/tracking.js';
 
 const canvas = document.getElementById('gl');
 const overlay = document.getElementById('overlay');
@@ -25,12 +29,19 @@ const state = {
 };
 
 const camera = new Camera(0.1);
+const tracking = new Tracking();
 
-// Mouse stand-in for head tracking: map cursor to normalized [-1,1].
-window.addEventListener('mousemove', (e) => {
-  const x = (e.clientX / window.innerWidth) * 2 - 1;
-  const y = -((e.clientY / window.innerHeight) * 2 - 1);
-  camera.setTarget(x, y, 0);
+// Dev keybind: 'c' attempts camera mode. Any failure falls back gracefully
+// (tracking.js sets tracking.fallbackReason); replaced by splash UI in #9.
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'c' || e.key === 'C') {
+    tracking.start({ camera: true }).then(() => {
+      console.log(
+        `tracking mode=${tracking.mode}` +
+          (tracking.fallbackReason ? ` fallbackReason=${tracking.fallbackReason}` : '')
+      );
+    });
+  }
 });
 
 async function boot() {
@@ -59,8 +70,10 @@ async function boot() {
   console.log(`benchmark: ${tier} (${median}ms)`);
   renderer.setQuality(tier);
 
+  await tracking.start({ camera: false });
+
   window.addEventListener('resize', () => renderer.resize());
-  window.__ep = { renderer, state };
+  window.__ep = { renderer, state, tracking };
   console.log(`renderer ready tier=${tier}`);
 
   const PROGRESS_PERIOD = 60; // seconds for a full 0->1->0 ping-pong
@@ -73,10 +86,14 @@ async function boot() {
     const phase = (t % PROGRESS_PERIOD) / PROGRESS_PERIOD;
     state.progress = phase < 0.5 ? phase * 2 : (1 - phase) * 2;
 
+    const sample = tracking.sample();
+    camera.setTarget(sample.head.x, sample.head.y, sample.head.z);
     const head = camera.update();
     state.head.x = head.x;
     state.head.y = head.y;
     state.head.z = head.z;
+    state.handL = sample.handL;
+    state.handR = sample.handR;
 
     state.breathe = 0.5 + 0.5 * Math.sin(t * 0.4);
 
