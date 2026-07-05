@@ -17,6 +17,7 @@ import { Camera } from './camera.js';
 import { Tracking } from './input/tracking.js';
 import { Journey } from './journey.js';
 import { Rays } from './rays.js';
+import { audio } from './audio.js';
 
 const canvas = document.getElementById('gl');
 const overlay = document.getElementById('overlay');
@@ -38,6 +39,8 @@ const rays = new Rays();
 
 function begin() {
   if (journey.started) return;
+  // audio.init() needs a user gesture; begin() is always click/key-triggered.
+  audio.init();
   journey.start();
 }
 
@@ -55,6 +58,9 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.key === 'b' || e.key === 'B') {
     begin();
+  }
+  if (e.key === 'm' || e.key === 'M') {
+    audio.setMuted(!audio.muted);
   }
 });
 
@@ -88,7 +94,7 @@ async function boot() {
   await rays.loadDeck();
 
   window.addEventListener('resize', () => renderer.resize());
-  window.__ep = { renderer, state, tracking, journey, rays, begin };
+  window.__ep = { renderer, state, tracking, journey, rays, begin, audio };
   console.log(`renderer ready tier=${tier}`);
 
   let lastNow = performance.now();
