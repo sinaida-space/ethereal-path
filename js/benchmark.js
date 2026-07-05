@@ -29,17 +29,24 @@ export async function runBenchmark(renderer) {
   const gpuSync = () => gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
 
   // Warm up: let the driver compile/upload and reach steady state.
+  // Budgeted: on very slow GPUs a fixed frame count would freeze the page
+  // for tens of seconds, so both loops bail once they have spent their time
+  // budget and have enough samples for a stable median.
+  const warmupDeadline = performance.now() + 600;
   for (let i = 0; i < WARMUP; i++) {
     renderer.frame(i / 60, neutralState((i / WARMUP) * 0.5));
+    if (performance.now() > warmupDeadline && i >= 4) break;
   }
   gpuSync();
 
   const times = [];
+  const timedDeadline = performance.now() + 1200;
   for (let i = 0; i < TIMED; i++) {
     const t0 = performance.now();
     renderer.frame((WARMUP + i) / 60, neutralState(0.5));
     gpuSync();
     times.push(performance.now() - t0);
+    if (performance.now() > timedDeadline && times.length >= 8) break;
   }
 
   times.sort((a, b) => a - b);
