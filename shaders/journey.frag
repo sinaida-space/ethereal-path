@@ -241,42 +241,40 @@ vec3 godRayContribution(vec3 p, vec3 sunDir, float act1, float act2,
 }
 
 // ---- Act II: bioluminescent motes (grid-cell hashing) ----
-// Sparse 3D sparkle advected slowly upward. Each mote is a SOFT point with
-// FINITE support: brightness reaches ~0 well before the cell edge (influence
-// radius < 0.5 cell). We scan the 3x3x3 neighborhood so a mote near a cell
-// boundary still lights adjacent samples continuously — NO hard cell squares.
+// Sparse 3D sparkle advected slowly upward. One hash lookup per layer: the
+// mote's jitter is confined to [R, 1-R] of its cell so its whole influence
+// radius stays inside the cell — continuous across faces by construction,
+// no neighbor scan needed. Two offset layers hide the grid regularity that
+// confinement would otherwise show.
+float moteLayer(vec3 q, float scale, float seed) {
+  q = q * scale + seed;
+  vec3 base = floor(q);
+  vec3 f = q - base;                   // position within the cell [0,1)
+  // ~8% of cells lit — sparse; darkness must dominate.
+  float on = step(0.92, hash3(base + 3.7));
+  // Per-mote brightness variation: mostly faint, occasionally vivid.
+  float amp = 0.15 + 0.85 * pow(hash3(base + 7.7), 3.0);
+  const float R = 0.30;                // influence radius, in cell units
+  vec3 jitter = vec3(hash3(base + 1.1),
+                     hash3(base + 2.2),
+                     hash3(base + 5.5));
+  vec3 pt = R + (1.0 - 2.0 * R) * jitter;
+  float d = length(f - pt);
+  // smoothstep(R,0,d) guarantees exactly 0 at/after the influence radius.
+  float fall = smoothstep(R, 0.0, d) * exp(-d * 10.0) * on * amp;
+  // Per-mote twinkle keyed to the cell hash.
+  float tw = 0.7 + 0.3 * sin(uTime * 2.0 + hash3(base) * 6.28);
+  return fall * tw;
+}
+
 vec3 moteField(vec3 p, float act2) {
   if (act2 < 0.01) return vec3(0.0);
   // Advect the field upward over time (motes drift up past the descending eye).
   vec3 q = p + vec3(0.0, uTime * 0.15, 0.0);
-  vec3 base = floor(q);
-  vec3 f = q - base;                   // position within the base cell [0,1)
-
-  float spark = 0.0;
-  // 3x3x3 = 27 cheap hash lookups, no noise octaves — well within budget.
-  for (int gz = -1; gz <= 1; gz++)
-  for (int gy = -1; gy <= 1; gy++)
-  for (int gx = -1; gx <= 1; gx++) {
-    vec3 g = vec3(float(gx), float(gy), float(gz));
-    vec3 cell = base + g;
-    // ~22% of cells lit — sparse.
-    float on = step(0.78, hash3(cell + 3.7));
-    // Jittered point inside its cell; offset into this neighbor's frame.
-    vec3 jitter = vec3(hash3(cell + 1.1),
-                       hash3(cell + 2.2),
-                       hash3(cell + 5.5));
-    vec3 pt = g + jitter;              // point position relative to base cell
-    float d = length(f - pt);
-    // Finite support: hard zero beyond R=0.45 (< half a cell), smooth to 0.
-    // smoothstep(R,0,d) guarantees exactly 0 at/after the influence radius.
-    float fall = smoothstep(0.45, 0.0, d) * exp(-d * 6.0) * on;
-    // Per-mote twinkle keyed to the cell hash.
-    float tw = 0.7 + 0.3 * sin(uTime * 2.0 + hash3(cell) * 6.28);
-    spark += fall * tw;
-  }
+  float spark = moteLayer(q, 1.4, 0.0) + moteLayer(q, 2.3, 17.3);
   // Warm-white with a pink-violet cast that grows with depth.
   vec3 tint = mix(MOTE_WARM, MOTE_PINK, act2 * 0.6);
-  return tint * spark * act2 * 2.2;
+  return tint * spark * act2 * 1.6;
 }
 
 // ---- Act II: silhouetted flora (SDF kelp ribbons) ----
@@ -353,7 +351,9 @@ void main() {
   // geometry (god-rays/motes are analytic, so coarse sampling only adds noise).
   float MARCH_LEN = 26.0;
   float dt = MARCH_LEN / float(steps);
-  float t = 0.05;
+  // Per-pixel start jitter hides step-quantization banding (visible as
+  // stripes across ray cones at low step counts) at the cost of fine noise.
+  float t = 0.05 + dt * fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
 
   for (int i = 0; i < 256; i++) {
     if (i >= steps) break;
