@@ -18,6 +18,8 @@ import { Tracking } from './input/tracking.js';
 import { Journey } from './journey.js';
 import { Rays } from './rays.js';
 import { audio } from './audio.js';
+import { initSplash } from './ui/splash.js';
+import { initOverlay } from './ui/overlay.js';
 
 const canvas = document.getElementById('gl');
 const overlay = document.getElementById('overlay');
@@ -44,21 +46,8 @@ function begin() {
   journey.start();
 }
 
-// Dev keybind: 'c' attempts camera mode. Any failure falls back gracefully
-// (tracking.js sets tracking.fallbackReason); replaced by splash UI in #9.
-// Dev keybind: 'b' begins the session; splash screen (#9) will call this.
+// The splash screen owns session start and camera choice; 'm' toggles mute.
 window.addEventListener('keydown', (e) => {
-  if (e.key === 'c' || e.key === 'C') {
-    tracking.start({ camera: true }).then(() => {
-      console.log(
-        `tracking mode=${tracking.mode}` +
-          (tracking.fallbackReason ? ` fallbackReason=${tracking.fallbackReason}` : '')
-      );
-    });
-  }
-  if (e.key === 'b' || e.key === 'B') {
-    begin();
-  }
   if (e.key === 'm' || e.key === 'M') {
     audio.setMuted(!audio.muted);
   }
@@ -85,16 +74,21 @@ async function boot() {
 
   await renderer.load();
 
+  // Splash first: the benchmark runs behind it while the intro is read.
+  const splash = initSplash({ renderer, tracking, begin });
+  initOverlay({ audio, splash });
+
   const tier = await runBenchmark(renderer);
   const median = (renderer._median || 0).toFixed(1);
   console.log(`benchmark: ${tier} (${median}ms)`);
   renderer.setQuality(tier);
+  splash.setBenchmark(tier, median);
 
   await tracking.start({ camera: false });
   await rays.loadDeck();
 
   window.addEventListener('resize', () => renderer.resize());
-  window.__ep = { renderer, state, tracking, journey, rays, begin, audio };
+  window.__ep = { renderer, state, tracking, journey, rays, begin, audio, splash };
   console.log(`renderer ready tier=${tier}`);
 
   let lastNow = performance.now();
