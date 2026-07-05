@@ -46,6 +46,7 @@ export class Renderer {
     this.programs = {};
     this.loc = {};
     this._loaded = false;
+    this._rayBuf = new Float32Array(12); // reused every frame — no per-frame alloc
   }
 
   async load() {
@@ -165,15 +166,16 @@ export class Renderer {
     gl.uniform4f(L.uHandL, hl.x, hl.y, hl.present, 0);
     gl.uniform4f(L.uHandR, hr.x, hr.y, hr.present, 0);
 
-    // uRays[3]: xy pos, z taken, w active.
-    const rays = new Float32Array(12);
+    // uRays[3]: xy pos, z taken, w active (0..1 fade alpha, not a flag).
+    const rays = this._rayBuf;
+    rays.fill(0);
     for (let i = 0; i < 3; i++) {
       const r = state.rays[i];
       if (r) {
         rays[i * 4 + 0] = r.x;
         rays[i * 4 + 1] = r.y;
         rays[i * 4 + 2] = r.taken || 0;
-        rays[i * 4 + 3] = 1;
+        rays[i * 4 + 3] = r.active !== undefined ? r.active : 1;
       }
     }
     gl.uniform4fv(L['uRays[0]'], rays);

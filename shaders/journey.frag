@@ -209,7 +209,7 @@ vec3 godRayContribution(vec3 p, vec3 sunDir, float act1, float act2,
   for (int i = 0; i < 3; i++) {
     if (float(i) >= count) break;
     vec4 R = uRays[i];
-    if (R.w < 0.5) continue;
+    if (R.w < 0.01) continue;   // w is the fade alpha (0..1), not a flag
     // Map ray xy [-1,1] into a world anchor high above, near the surface.
     vec3 anchor = vec3(R.x * 3.0 + pathX(p.z), SURFACE_Y, p.z + R.y * 3.0);
     // Perpendicular distance from p to the shaft line through anchor.
@@ -246,7 +246,8 @@ vec3 godRayContribution(vec3 p, vec3 sunDir, float act1, float act2,
     // Auroral spectral drift in Act III: cyan at the base, violet up the pillar.
     tint = mix(tint, RAY_VIOLET, act3 * clamp(along * 0.08, 0.0, 0.8));
     // Peak tuned so only the shaft CORE crosses the 0.7 bloom threshold.
-    acc += tint * shaft * 0.9 * breatheGlow;
+    // R.w scales the whole shaft through its fade-in/out lifecycle.
+    acc += tint * shaft * 0.9 * breatheGlow * R.w;
   }
   // Rays fade with the surface in Act I, thin out but persist in Act II.
   return acc * mix(1.0, 0.7, act2);
