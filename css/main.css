@@ -28,3 +28,185 @@ html, body {
 #overlay {
   pointer-events: none;
 }
+
+/* ---- splash: text floating in the dark, no UI chrome ---- */
+.splash {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.72);
+  color: #cfd8e3;
+  transition: opacity 1.5s ease;
+  overflow-y: auto;
+  z-index: 10;
+}
+.splash.fading { opacity: 0; }
+.splash.fading-in { animation: splashIn 1.5s ease; }
+@keyframes splashIn { from { opacity: 0; } to { opacity: 1; } }
+
+.splash-inner {
+  max-width: 34rem;
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+.splash-title {
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: normal;
+  letter-spacing: 0.35em;
+  margin-bottom: 0.8rem;
+  text-shadow: 0 0 24px rgba(140, 190, 255, 0.35);
+}
+.splash-subtitle {
+  opacity: 0.75;
+  font-style: italic;
+  margin-bottom: 1.6rem;
+}
+.hairline {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  margin: 1.4rem 0;
+}
+.splash-intro { line-height: 1.65; opacity: 0.9; }
+.splash-credit { margin-top: 1.2rem; font-size: 0.95rem; }
+.splash-credit a {
+  color: #cfd8e3;
+  text-shadow: 0 0 18px rgba(140, 190, 255, 0.35);
+}
+.splash-warning { margin-top: 0.7rem; font-size: 0.85rem; opacity: 0.6; }
+.splash-bench { font-size: 0.95rem; opacity: 0.8; min-height: 1.4em; }
+.shimmer { animation: shimmer 1.8s ease-in-out infinite; }
+@keyframes shimmer { 0%, 100% { opacity: 0.45; } 50% { opacity: 0.95; } }
+@media (prefers-reduced-motion: reduce) {
+  .shimmer { animation: none; }
+}
+.splash-quality { margin-top: 0.7rem; font-size: 0.95rem; }
+.quality-select {
+  background: transparent;
+  color: #cfd8e3;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 2px;
+  font: inherit;
+  padding: 0.15rem 0.5rem;
+}
+.splash-eco-note { margin-top: 0.5rem; font-size: 0.85rem; opacity: 0.65; font-style: italic; }
+.splash-fallback-note { margin-top: 0.8rem; font-size: 0.9rem; opacity: 0.75; font-style: italic; }
+
+.splash-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1.8rem;
+  flex-wrap: wrap;
+}
+.btn {
+  background: transparent;
+  color: #cfd8e3;
+  font: inherit;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  padding: 0.7rem 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: border-color 0.4s ease, text-shadow 0.4s ease;
+}
+.btn:hover:not(:disabled), .btn:focus-visible {
+  border-color: rgba(160, 210, 255, 0.7);
+  text-shadow: 0 0 18px rgba(140, 190, 255, 0.55);
+  outline: none;
+}
+.btn:focus-visible { box-shadow: 0 0 0 1px rgba(160, 210, 255, 0.5); }
+.btn:disabled { opacity: 0.35; cursor: default; }
+
+/* ---- calibration ---- */
+.calibration {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+}
+.calibration[hidden] { display: none; }
+.cal-circle {
+  width: 72px;
+  height: 72px;
+  border: 1px solid rgba(160, 210, 255, 0.7);
+  border-radius: 50%;
+  box-shadow: 0 0 32px rgba(140, 190, 255, 0.35);
+  animation: calPulse 3s ease-in-out infinite;
+}
+@keyframes calPulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.12); opacity: 1; }
+}
+.cal-text { opacity: 0.8; font-style: italic; }
+
+/* ---- in-journey overlay ---- */
+.question-text {
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(80vw, 40rem);
+  text-align: center;
+  font-style: italic;
+  font-size: clamp(1.3rem, 2.6vw, 2rem);
+  color: #dfe8f2;
+  text-shadow: 0 0 22px rgba(150, 200, 255, 0.45);
+  opacity: 0;
+  transition: opacity 4s ease;
+}
+.question-text.visible { opacity: 1; transition: opacity 1.5s ease; }
+
+.cue-text {
+  position: absolute;
+  bottom: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(85vw, 34rem);
+  text-align: center;
+  font-size: 1rem;
+  opacity: 0;
+  transition: opacity 2s ease;
+}
+.cue-text.visible { opacity: 0.65; transition: opacity 1s ease; }
+
+.hint {
+  position: absolute;
+  bottom: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(85vw, 34rem);
+  text-align: center;
+  font-size: 0.95rem;
+  font-style: italic;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+.hint.visible { opacity: 0.7; }
+
+.mute-btn {
+  position: absolute;
+  right: 1.2rem;
+  bottom: 1rem;
+  pointer-events: auto;
+  background: transparent;
+  color: #cfd8e3;
+  font: inherit;
+  font-size: 0.85rem;
+  border: none;
+  opacity: 0.45;
+  cursor: pointer;
+  transition: opacity 0.4s ease;
+}
+.mute-btn:hover, .mute-btn:focus-visible { opacity: 0.9; outline: none; }
+
+/* ---- mobile ---- */
+@media (max-width: 700px) {
+  .splash-inner { padding: 2rem 1.2rem; }
+  .splash-buttons { flex-direction: column; }
+  .btn { width: 100%; min-height: 48px; }
+  .question-text { top: 12%; }
+}
