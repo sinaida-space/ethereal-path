@@ -1,0 +1,140 @@
+{
+  "version": 1,
+  "decks": [
+    {
+      "id": "desk-reset",
+      "title": "desk reset",
+      "subtitle": "5 minutes · seated",
+      "driftSeconds": 150,
+      "stations": [
+        { "id": "settle", "cue": "settle in — breathe with the tunnel",
+          "guide": "sit tall, feet on the floor — just breathe",
+          "type": "auto", "duration": 12, "pose": "breathe" },
+        { "id": "neck-turns", "cue": "slowly turn your head to the left … then to the right",
+          "guide": "turn your head fully left, pause — then fully right",
+          "phases": [
+            { "sig": "yaw", "below": -0.5, "hold": 1.2, "pose": "yaw-left" },
+            { "sig": "yaw", "above": -0.15, "hold": 0.4, "pose": "center" },
+            { "sig": "yaw", "above": 0.5, "hold": 1.2, "pose": "yaw-right" },
+            { "sig": "yaw", "below": 0.15, "hold": 0.4, "pose": "center" }
+          ], "rounds": 2 },
+        { "id": "neck-tilts", "cue": "let one ear sink toward its shoulder … then the other",
+          "guide": "ear toward shoulder, hold — then the other side",
+          "phases": [
+            { "sig": "roll", "below": -0.4, "hold": 1.2, "pose": "tilt-left" },
+            { "sig": "roll", "above": -0.1, "hold": 0.4, "pose": "center" },
+            { "sig": "roll", "above": 0.4, "hold": 1.2, "pose": "tilt-right" },
+            { "sig": "roll", "below": 0.1, "hold": 0.4, "pose": "center" }
+          ], "rounds": 2, "fallback": "auto" },
+        { "id": "look-up", "cue": "look slowly up into the light … then tuck your chin",
+          "guide": "chin up toward the ceiling, hold — then chin to chest",
+          "phases": [
+            { "sig": "pitch", "above": 0.45, "hold": 1.2, "pose": "look-up" },
+            { "sig": "pitch", "below": -0.3, "hold": 1.0, "pose": "chin-tuck" }
+          ], "rounds": 2 },
+        { "id": "shrug", "cue": "draw your shoulders up to your ears … and let them fall",
+          "guide": "shoulders up to your ears, hold — then drop them",
+          "phases": [
+            { "sig": "shrug", "above": 0.4, "hold": 0.8, "pose": "shrug-up" },
+            { "sig": "shrug", "below": 0.1, "hold": 0.8, "pose": "release" }
+          ], "rounds": 2, "fallback": "auto" },
+        { "id": "arm-left", "cue": "reach your left hand up into the ring",
+          "guide": "raise your left arm high until the ring fills",
+          "phases": [{ "sig": "handAny", "above": 0.35, "hold": 1.5, "pose": "reach-up-left" }],
+          "rounds": 2, "lateral": -0.5 },
+        { "id": "arm-right", "cue": "now the right hand — reach for the light",
+          "guide": "raise your right arm high",
+          "phases": [{ "sig": "handAny", "above": 0.35, "hold": 1.5, "pose": "reach-up-right" }],
+          "rounds": 2, "lateral": 0.5 },
+        { "id": "reach-across", "cue": "reach across your body into the ring",
+          "guide": "reach one hand across to the far side",
+          "phases": [{ "sig": "handAny", "above": 0.1, "hold": 1.2, "pose": "reach-across" }],
+          "rounds": 2, "lateral": 0.7 },
+        { "id": "look-behind", "cue": "turn as far as feels kind — first left, then right",
+          "guide": "turn as far as you comfortably can, each way",
+          "phases": [
+            { "sig": "yaw", "below": -0.75, "hold": 1.0, "pose": "yaw-left" },
+            { "sig": "yaw", "above": 0.0, "hold": 0.3, "pose": "center" },
+            { "sig": "yaw", "above": 0.75, "hold": 1.0, "pose": "yaw-right" },
+            { "sig": "yaw", "below": 0.0, "hold": 0.3, "pose": "center" }
+          ], "rounds": 1 }
+      ]
+    },
+    {
+      "id": "full-surface",
+      "title": "full surface",
+      "subtitle": "8 minutes · you will rise",
+      "driftSeconds": 210,
+      "stations": [
+        { "id": "settle", "cue": "settle in — breathe with the tunnel",
+          "guide": "sit tall, feet on the floor — just breathe",
+          "type": "auto", "duration": 12, "pose": "breathe" },
+        { "id": "neck-turns", "cue": "slowly turn your head to the left … then to the right",
+          "guide": "turn your head fully left, pause — then fully right",
+          "phases": [
+            { "sig": "yaw", "below": -0.5, "hold": 1.2, "pose": "yaw-left" },
+            { "sig": "yaw", "above": -0.15, "hold": 0.4, "pose": "center" },
+            { "sig": "yaw", "above": 0.5, "hold": 1.2, "pose": "yaw-right" },
+            { "sig": "yaw", "below": 0.15, "hold": 0.4, "pose": "center" }
+          ], "rounds": 2 },
+        { "id": "neck-tilts", "cue": "let one ear sink toward its shoulder … then the other",
+          "guide": "ear toward shoulder, hold — then the other side",
+          "phases": [
+            { "sig": "roll", "below": -0.4, "hold": 1.2, "pose": "tilt-left" },
+            { "sig": "roll", "above": -0.1, "hold": 0.4, "pose": "center" },
+            { "sig": "roll", "above": 0.4, "hold": 1.2, "pose": "tilt-right" },
+            { "sig": "roll", "below": 0.1, "hold": 0.4, "pose": "center" }
+          ], "rounds": 2, "fallback": "auto" },
+        { "id": "shrug", "cue": "draw your shoulders up to your ears … and let them fall",
+          "guide": "shoulders up to your ears, hold — then drop them",
+          "phases": [
+            { "sig": "shrug", "above": 0.4, "hold": 0.8, "pose": "shrug-up" },
+            { "sig": "shrug", "below": 0.1, "hold": 0.8, "pose": "release" }
+          ], "rounds": 2, "fallback": "auto" },
+        { "id": "stand-up", "cue": "now rise — the path widens when you stand",
+          "guide": "stand up and step back until your hips are in view",
+          "phases": [{ "sig": "standing", "above": 0.5, "hold": 2.0, "pose": "stand" }],
+          "rounds": 1, "fallback": "auto", "duration": 10 },
+        { "id": "overhead-reach", "cue": "reach both arms into the light above you",
+          "guide": "both arms overhead, stretch tall — then let them fall",
+          "phases": [
+            { "sig": "handAny", "above": 0.5, "hold": 1.5, "pose": "reach-up-both" },
+            { "sig": "handAny", "below": 0.2, "hold": 0.6, "pose": "release" }
+          ], "rounds": 2 },
+        { "id": "side-bends", "cue": "let the current bend you — one side, then the other",
+          "guide": "lean your whole torso left, hold — then right",
+          "phases": [
+            { "sig": "roll", "below": -0.35, "hold": 1.2, "pose": "side-left" },
+            { "sig": "roll", "above": -0.1, "hold": 0.4, "pose": "center" },
+            { "sig": "roll", "above": 0.35, "hold": 1.2, "pose": "side-right" },
+            { "sig": "roll", "below": 0.1, "hold": 0.4, "pose": "center" }
+          ], "rounds": 2, "fallback": "auto" },
+        { "id": "slow-twist", "cue": "turn with the tunnel — slowly, all the way around",
+          "guide": "twist your shoulders left, then right, slowly",
+          "phases": [
+            { "sig": "yaw", "below": -0.6, "hold": 1.2, "pose": "twist-left" },
+            { "sig": "yaw", "above": 0.0, "hold": 0.4, "pose": "center" },
+            { "sig": "yaw", "above": 0.6, "hold": 1.2, "pose": "twist-right" },
+            { "sig": "yaw", "below": 0.0, "hold": 0.4, "pose": "center" }
+          ], "rounds": 2 },
+        { "id": "calf-raises", "cue": "rise onto your toes … and settle back down",
+          "guide": "rise onto your toes, lower — six times",
+          "phases": [
+            { "sig": "rise", "above": 0.3, "hold": 0.4, "pose": "rise-up" },
+            { "sig": "rise", "below": 0.05, "hold": 0.3, "pose": "rise-down" }
+          ], "rounds": 6, "fallback": "auto" },
+        { "id": "shake-out", "cue": "let everything go loose — shake the water off",
+          "guide": "shake out your arms and shoulders, loose and easy",
+          "type": "auto", "duration": 10, "pose": "sway" },
+        { "id": "look-behind", "cue": "one last look — as far as feels kind, each way",
+          "guide": "turn as far as you comfortably can, each way",
+          "phases": [
+            { "sig": "yaw", "below": -0.75, "hold": 1.0, "pose": "yaw-left" },
+            { "sig": "yaw", "above": 0.0, "hold": 0.3, "pose": "center" },
+            { "sig": "yaw", "above": 0.75, "hold": 1.0, "pose": "yaw-right" },
+            { "sig": "yaw", "below": 0.0, "hold": 0.3, "pose": "center" }
+          ], "rounds": 1 }
+      ]
+    }
+  ]
+}

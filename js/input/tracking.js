@@ -40,8 +40,12 @@ const LM_LEFT_ELBOW = 13;
 const LM_RIGHT_ELBOW = 14;
 const LM_LEFT_WRIST = 15;
 const LM_RIGHT_WRIST = 16;
+const LM_LEFT_HIP = 23;
+const LM_RIGHT_HIP = 24;
 
 const POSE_ALPHA = 0.2;
+const RISE_SLOW_ALPHA = 0.008; // slow EMA baseline for the high-passed rise
+const RISE_GAIN = 8.0;
 // Gains map raw geometric ratios onto a comfortable [-1,1] exercise range.
 const YAW_GAIN = 1.6;
 const PITCH_GAIN = 2.0;
@@ -78,13 +82,14 @@ export class Tracking {
     // smoothed head yaw/pitch/roll and shoulder shrug, plus raw shoulder
     // positions for the constellation.
     this._pose = {
-      yaw: 0, pitch: 0, roll: 0, shrug: 0,
+      yaw: 0, pitch: 0, roll: 0, shrug: 0, standing: 0, rise: 0,
       shoulderL: { x: -0.35, y: -0.55 },
       shoulderR: { x: 0.35, y: -0.55 },
       ok: false,
     };
     this._poseBaseAcc = [];
-    this._poseBase = null; // { yaw, pitch, roll, shoulderY }
+    this._poseBase = null; // { yaw, pitch, roll, shoulderY, noseY, hipVis }
+    this._noseSlow = null; // slow-adaptive nose height for the rise signal
 
     // Latest raw landmark array (camera mode) for the constellation overlay.
     this.landmarks = null;
@@ -296,13 +301,13 @@ export class Tracking {
 
     this._updateHand(this._handL, lw);
     this._updateHand(this._handR, rw);
-    this._updatePose(nose, le, re, ls, rs);
+    this._updatePose(nose, le, re, ls, rs, lm[LM_LEFT_HIP], lm[LM_RIGHT_HIP]);
   }
 
   // ---- pose signals (#22): yaw/pitch from nose vs ear midpoint scaled by
   // ear distance, roll from the ear line, shrug from shoulder rise — all
   // baseline-relative (recalibrate() re-zeros) and EMA-smoothed.
-  _updatePose(nose, le, re, ls, rs) {
+  _updatePose(nose, le, re, ls, rs, lh, rh) {
     const mx = (p) => -(p.x * 2 - 1);
     const my = (p) => -(p.y * 2 - 1);
 
@@ -322,6 +327,9 @@ export class Tracking {
     const pitchRaw = (my(nose) - emy) / earDist;
     const rollRaw = Math.atan2(my(re) - my(le), mx(re) - mx(le));
     const shoulderY = (my(ls) + my(rs)) / 2;
+    const noseY = my(nose);
+    const vis = (p) => (p && typeof p.visibility === 'number' ? p.visibility : 0);
+    const hipVis = (vis(lh) + vis(rh)) / 2;
 
     if (!Number.isFinite(yawRaw) || !Number.isFinite(pitchRaw) || !Number.isFinite(rollRaw)) {
       p.ok = false;
@@ -329,13 +337,14 @@ export class Tracking {
     }
 
     if (this._poseBase === null) {
-      this._poseBaseAcc.push({ yaw: yawRaw, pitch: pitchRaw, roll: rollRaw, shoulderY });
+      this._poseBaseAcc.push({ yaw: yawRaw, pitch: pitchRaw, roll: rollRaw, shoulderY, noseY, hipVis });
       if (this._poseBaseAcc.length >= BASELINE_SAMPLES) {
         const n = this._poseBaseAcc.length;
         const mean = (k) => this._poseBaseAcc.reduce((a, s) => a + s[k], 0) / n;
         this._poseBase = {
           yaw: mean('yaw'), pitch: mean('pitch'),
           roll: mean('roll'), shoulderY: mean('shoulderY'),
+          noseY: mean('noseY'), hipVis: mean('hipVis'),
         };
       }
       p.ok = false;
@@ -347,6 +356,22 @@ export class Tracking {
     p.pitch += (clamp((pitchRaw - b.pitch) * PITCH_GAIN, -1, 1) - p.pitch) * POSE_ALPHA;
     p.roll += (clamp((rollRaw - b.roll) * ROLL_GAIN, -1, 1) - p.roll) * POSE_ALPHA;
     p.shrug += (clamp((shoulderY - b.shoulderY) * SHRUG_GAIN, -1, 1) - p.shrug) * POSE_ALPHA;
+
+    // Standing (#T1): both deltas are against the *seated* calibration
+    // baseline — hips entering the frame and the nose sitting higher. Either
+    // alone false-positives (wide framing shows hips seated; leaning back
+    // raises the nose), so each contributes half.
+    const hipDelta = clamp((hipVis - b.hipVis - 0.15) * 3, 0, 1);
+    const noseDelta = clamp(((noseY - b.noseY) - 0.10) * 5, 0, 1);
+    p.standing += (clamp(hipDelta * 0.5 + noseDelta * 0.5, 0, 1) - p.standing) * POSE_ALPHA;
+
+    // Rise (#T1): high-passed nose height — works seated or standing because
+    // the slow baseline follows posture changes over ~2s. Calf raises and
+    // any bounce read as short-lived positive excursions.
+    if (this._noseSlow === null) this._noseSlow = noseY;
+    this._noseSlow += (noseY - this._noseSlow) * RISE_SLOW_ALPHA;
+    p.rise += (clamp((noseY - this._noseSlow) * RISE_GAIN, -1, 1) - p.rise) * POSE_ALPHA;
+
     p.ok = true;
   }
 
@@ -392,6 +417,7 @@ export class Tracking {
       this._resetBaseline();
       this._poseBaseAcc = [];
       this._poseBase = null;
+      this._noseSlow = null;
     } else if (this._fallback) {
       this._fallback.recalibrate();
     }
@@ -406,6 +432,7 @@ export class Tracking {
         handR: { x: this._handR.x, y: this._handR.y, present: this._handR.present },
         pose: {
           yaw: p.yaw, pitch: p.pitch, roll: p.roll, shrug: p.shrug,
+          standing: p.standing, rise: p.rise,
           shoulderL: { x: p.shoulderL.x, y: p.shoulderL.y },
           shoulderR: { x: p.shoulderR.x, y: p.shoulderR.y },
           ok: p.ok,
@@ -420,7 +447,7 @@ export class Tracking {
       handL: { x: 0, y: 0, present: 0 },
       handR: { x: 0, y: 0, present: 0 },
       pose: {
-        yaw: 0, pitch: 0, roll: 0, shrug: 0,
+        yaw: 0, pitch: 0, roll: 0, shrug: 0, standing: 0, rise: 0,
         shoulderL: { x: -0.35, y: -0.55 }, shoulderR: { x: 0.35, y: -0.55 },
         ok: false,
       },

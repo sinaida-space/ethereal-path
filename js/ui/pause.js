@@ -8,7 +8,6 @@
 // edits. No storage, no new fonts/libraries.
 
 import { initConstellation } from './constellation.js';
-import { JOURNEY_DURATION_S } from '../config.js';
 
 const SURFACE_LINEAR_PROGRESS = 0.955;
 
@@ -111,7 +110,7 @@ export function initPause({ journey, splash, tracking }) {
       gl.classList.remove('gl-dim');
       // Jump the journey's clock to the Return act's linear progress, then
       // let it play its exhale and end normally (sessionEnd -> end screen).
-      journey.t = SURFACE_LINEAR_PROGRESS * JOURNEY_DURATION_S;
+      journey.jumpToLinear(SURFACE_LINEAR_PROGRESS);
       journey.release();
     }, 2000);
   }

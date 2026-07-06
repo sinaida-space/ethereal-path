@@ -198,6 +198,7 @@ export class FallbackSource {
       // stations stay mode-blind; shrug/roll have no fallback source.
       pose: {
         yaw: this._head.x, pitch: this._head.y, roll: 0, shrug: 0,
+        standing: 0, rise: 0,
         shoulderL: { x: -0.35, y: -0.55 }, shoulderR: { x: 0.35, y: -0.55 },
         ok: true,
       },

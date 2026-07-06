@@ -40,8 +40,10 @@ const tracking = new Tracking();
 const journey = new Journey();
 const stations = new Stations();
 
-function begin() {
+function begin(opts = {}) {
   if (journey.started) return;
+  if (opts.deckId) stations.setDeck(opts.deckId);
+  if (stations.driftSeconds) journey.setDuration(stations.driftSeconds);
   // audio.init() needs a user gesture; begin() is always click/key-triggered.
   audio.init();
   journey.start();
