@@ -16,7 +16,7 @@ import { runBenchmark } from './benchmark.js';
 import { Camera } from './camera.js';
 import { Tracking } from './input/tracking.js';
 import { Journey } from './journey.js';
-import { Rays } from './rays.js';
+import { Stations } from './stations.js';
 import { audio } from './audio.js';
 import { initSplash } from './ui/splash.js';
 import { initOverlay } from './ui/overlay.js';
@@ -37,7 +37,7 @@ const state = {
 const camera = new Camera(0.1);
 const tracking = new Tracking();
 const journey = new Journey();
-const rays = new Rays();
+const stations = new Stations();
 
 function begin() {
   if (journey.started) return;
@@ -85,10 +85,10 @@ async function boot() {
   splash.setBenchmark(tier, median);
 
   await tracking.start({ camera: false });
-  await rays.loadDeck();
+  await stations.load();
 
   window.addEventListener('resize', () => renderer.resize());
-  window.__ep = { renderer, state, tracking, journey, rays, begin, audio, splash };
+  window.__ep = { renderer, state, tracking, journey, stations, begin, audio, splash };
   console.log(`renderer ready tier=${tier}`);
 
   let lastNow = performance.now();
@@ -112,7 +112,7 @@ async function boot() {
     state.handL = sample.handL;
     state.handR = sample.handR;
 
-    state.rays = rays.update(dt, sample, journey);
+    state.rays = stations.update(dt, sample, journey, tracking.mode);
 
     renderer.frame(t, state);
     requestAnimationFrame(loop);
