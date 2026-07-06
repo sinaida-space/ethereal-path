@@ -174,7 +174,7 @@ export function initSplash({ renderer, tracking, begin }) {
         </button>
         <button class="tile deck-tile" data-deck="full-surface">
           <span class="deck-title">full surface</span>
-          <span class="deck-sub">8 minutes · you will rise</span>
+          <span class="deck-sub">8 minutes · you'll need to stand up</span>
         </button>
       </div>
     `, () => {

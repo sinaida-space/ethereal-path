@@ -12,7 +12,7 @@ import { events } from '../events.js';
 
 const SURFACE_LINEAR_PROGRESS = 0.955;
 
-export function initPause({ journey, splash, tracking, constellation }) {
+export function initPause({ journey, splash, tracking, constellation, stations }) {
   const gl = document.getElementById('gl');
   const overlay = document.getElementById('overlay');
   if (!constellation) constellation = initConstellation(tracking);
@@ -21,6 +21,10 @@ export function initPause({ journey, splash, tracking, constellation }) {
   let unseenMantras = [];
   let currentMantra = '';
   let paused = false;
+  // True only during the direct finish-fade (not the same as `paused` — no
+  // mantra/figure/return-or-surface UI is ever shown for this path), so
+  // rest/Esc/return/surface can't race a fade already in flight.
+  let finishing = false;
   let sessionOver = false;
 
   fetch('data/mantras.json')
@@ -86,7 +90,18 @@ export function initPause({ journey, splash, tracking, constellation }) {
   const surfaceBtn = layer.querySelector('.pause-surface');
 
   function canPause() {
-    return journey.started && !journey.ended && !sessionOver;
+    return journey.started && !journey.ended && !sessionOver && !finishing;
+  }
+
+  // Shared tail for every graceful-exit path: abandon any in-flight
+  // exercise station (its ring shouldn't linger over the Return act, and
+  // its own hold shouldn't leave the world stuck — see stations.cancel),
+  // then jump the clock. jumpToLinear() sets progress directly and clears
+  // any remaining hold as a backstop, so the world reflects the jump on
+  // the very next frame regardless of what was holding it.
+  function releaseAndJump() {
+    try { stations?.cancel?.(journey); } catch (err) { /* ignore */ }
+    journey.jumpToLinear(SURFACE_LINEAR_PROGRESS);
   }
 
   function enterPause() {
@@ -125,33 +140,34 @@ export function initPause({ journey, splash, tracking, constellation }) {
       layer.classList.remove('surfacing');
       constellation.hideFigure();
       gl.classList.remove('gl-dim');
-      // Jump the journey's clock to the Return act's linear progress, then
-      // let it play its exhale and end normally (sessionEnd -> end screen).
-      journey.jumpToLinear(SURFACE_LINEAR_PROGRESS);
-      journey.release();
+      journey.release(); // matches enterPause()'s hold
+      releaseAndJump();
     }, 2000);
   }
 
   // Finishing from mid-pause is just "surface"; finishing while running goes
-  // straight to the black fade without ever showing the rest UI.
+  // straight to the black fade without ever showing the mantra/figure/
+  // return-or-surface UI — `.exit-only` hides that content so the fade is a
+  // clean black screen instead of an empty pause panel with stray buttons.
   function finishNow() {
     if (paused) {
       surface();
       return;
     }
     if (!canPause()) return;
-    paused = true;
+    finishing = true;
     journey.hold();
     gl.classList.add('gl-dim');
+    layer.classList.add('exit-only');
     layer.hidden = false;
     layer.classList.add('surfacing');
     setTimeout(() => {
       layer.hidden = true;
-      layer.classList.remove('surfacing');
+      layer.classList.remove('surfacing', 'exit-only');
       gl.classList.remove('gl-dim');
-      journey.jumpToLinear(SURFACE_LINEAR_PROGRESS);
-      journey.release();
-      paused = false;
+      journey.release(); // matches this function's own hold
+      releaseAndJump();
+      finishing = false;
     }, 2000);
   }
 

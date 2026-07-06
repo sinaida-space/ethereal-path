@@ -96,9 +96,32 @@ export class Journey {
     if (Number.isFinite(seconds) && seconds > 0) this._duration = seconds;
   }
 
-  // Jump the clock to a linear-progress point (pause.js 'surface' exit).
+  // Jump the clock to a linear-progress point (pause.js 'surface'/finish
+  // exit). This is a deliberate skip-ahead, not real elapsed time, so:
+  //  - `progress` is set directly rather than left for the next update() —
+  //    if a station hold is still active, update() early-returns before
+  //    recomputing progress and the jump would silently do nothing until
+  //    the hold cleared on its own.
+  //  - every boundary/cue at or before the jump point is marked already
+  //    fired WITHOUT emitting, so the next update() doesn't replay all of
+  //    them in a single burst (overlapping cue text + audio glides).
+  //  - any hold is force-cleared — a deliberate jump to the end overrides
+  //    whatever was holding the drift, station included.
   jumpToLinear(p) {
-    this.t = Math.max(0, Math.min(1, p)) * this._duration;
+    const linear = Math.max(0, Math.min(1, p));
+    this.t = linear * this._duration;
+    this.progress = easeInOutSine(linear);
+    for (const boundary of ACT_BOUNDARIES) {
+      if (linear >= boundary.progress) {
+        this._firedActs.add(boundary.progress);
+        this.act = boundary.act;
+      }
+    }
+    for (const cue of CUES) {
+      if (linear >= cue.progress) this._firedCues.add(cue.progress);
+    }
+    this.held = false;
+    this._holds = 0;
   }
 
   update(dt) {

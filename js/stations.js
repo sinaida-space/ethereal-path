@@ -232,4 +232,19 @@ export class Stations {
     if (this._ring) this._ringState.push(this._ring);
     return this._ringState;
   }
+
+  // Abandon any in-flight station (pause.js 'finish'/'surface' early exit):
+  // releases the hold this station added (if still holding — 'idle' means
+  // it already released on its own), clears the ring so it doesn't keep
+  // rendering over whatever the session jumps to next, and re-queues the
+  // gap so a resumed drift doesn't instantly re-engage.
+  cancel(journey) {
+    if (this._phase !== 'idle') journey.release();
+    this._ring = null;
+    this._phase = 'idle';
+    this._st = null;
+    this._idle = 0;
+    this._gap = BETWEEN_GAP_S;
+    this._ringState.length = 0;
+  }
 }

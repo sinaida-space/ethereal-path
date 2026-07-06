@@ -490,6 +490,13 @@ html, body {
   0% { opacity: 1; }
   100% { opacity: 0; }
 }
+/* Direct "finish here" exit: a clean black fade, no empty figure/mantra
+   box or return-or-surface buttons floating in it (see pause.js finishNow). */
+.pause-layer.exit-only .pause-figure,
+.pause-layer.exit-only .pause-mantra,
+.pause-layer.exit-only .pause-buttons {
+  visibility: hidden;
+}
 
 .pause-figure {
   flex-shrink: 0;
