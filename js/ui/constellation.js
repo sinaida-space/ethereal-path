@@ -38,6 +38,88 @@ const LM_RIGHT_WRIST = 16;
 function mirrorX(v) { return -(v * 2 - 1); }
 function mirrorY(v) { return -(v * 2 - 1); }
 
+// ---- ghost target poses (#T3) --------------------------------------------
+// Each keyword maps the idealized figure onto the position the exercise asks
+// for. The station HUD draws this dashed behind the live figure: "match me."
+function clonePts(src) {
+  const out = {};
+  for (const k of Object.keys(src)) out[k] = { x: src[k].x, y: src[k].y };
+  return out;
+}
+function headShift(p, dx, dy) {
+  for (const k of ['nose', 'earL', 'earR']) { p[k].x += dx; p[k].y += dy; }
+  return p;
+}
+function headRotate(p, deg) {
+  // Rotate the head cluster around the neck (midpoint of the shoulders).
+  const cx = (p.shoulderL.x + p.shoulderR.x) / 2;
+  const cy = (p.shoulderL.y + p.shoulderR.y) / 2 + 0.35;
+  const a = (deg * Math.PI) / 180;
+  const cos = Math.cos(a); const sin = Math.sin(a);
+  for (const k of ['nose', 'earL', 'earR']) {
+    const dx = p[k].x - cx; const dy = p[k].y - cy;
+    p[k].x = cx + dx * cos - dy * sin;
+    p[k].y = cy + dx * sin + dy * cos;
+  }
+  return p;
+}
+function leanAll(p, deg) {
+  const a = (deg * Math.PI) / 180;
+  const cos = Math.cos(a); const sin = Math.sin(a);
+  const cy = -1.4; // pivot at the base of the figure
+  for (const k of Object.keys(p)) {
+    const dx = p[k].x; const dy = p[k].y - cy;
+    p[k].x = dx * cos - dy * sin;
+    p[k].y = cy + dx * sin + dy * cos;
+  }
+  return p;
+}
+function setArm(p, side, elbow, wrist) {
+  p['elbow' + side].x = elbow.x; p['elbow' + side].y = elbow.y;
+  p['wrist' + side].x = wrist.x; p['wrist' + side].y = wrist.y;
+  return p;
+}
+function shrugBy(p, dy) {
+  for (const k of ['shoulderL', 'shoulderR', 'elbowL', 'elbowR', 'wristL', 'wristR']) p[k].y += dy;
+  return p;
+}
+function shiftAll(p, dx, dy) {
+  for (const k of Object.keys(p)) { p[k].x += dx; p[k].y += dy; }
+  return p;
+}
+
+const POSES = {
+  'breathe':        (p) => p,
+  'center':         (p) => p,
+  'sway':           (p) => p,
+  'yaw-left':       (p) => headShift(p, -0.15, 0),
+  'yaw-right':      (p) => headShift(p, 0.15, 0),
+  'twist-left':     (p) => { headShift(p, -0.15, 0); p.shoulderL.x += 0.10; p.shoulderR.x -= 0.14; return p; },
+  'twist-right':    (p) => { headShift(p, 0.15, 0); p.shoulderL.x += 0.14; p.shoulderR.x -= 0.10; return p; },
+  'tilt-left':      (p) => headRotate(p, 22),
+  'tilt-right':     (p) => headRotate(p, -22),
+  'side-left':      (p) => leanAll(p, 14),
+  'side-right':     (p) => leanAll(p, -14),
+  'look-up':        (p) => headShift(p, 0, 0.11),
+  'chin-tuck':      (p) => headShift(p, 0, -0.10),
+  'shrug-up':       (p) => shrugBy(p, 0.14),
+  'release':        (p) => shrugBy(p, -0.02),
+  'stand':          (p) => shiftAll(p, 0, 0.14),
+  'rise-up':        (p) => shiftAll(p, 0, 0.10),
+  'rise-down':      (p) => p,
+  'reach-up-left':  (p) => setArm(p, 'L', { x: -0.48, y: 0.05 }, { x: -0.42, y: 0.85 }),
+  'reach-up-right': (p) => setArm(p, 'R', { x: 0.48, y: 0.05 }, { x: 0.42, y: 0.85 }),
+  'reach-up-both':  (p) => setArm(setArm(p, 'L', { x: -0.48, y: 0.05 }, { x: -0.42, y: 0.85 }),
+                                  'R', { x: 0.48, y: 0.05 }, { x: 0.42, y: 0.85 }),
+  'reach-across':   (p) => setArm(p, 'R', { x: -0.10, y: -0.45 }, { x: -0.72, y: 0.05 }),
+};
+
+export function targetPose(keyword) {
+  const fn = POSES[keyword];
+  const base = clonePts(FALLBACK_POINTS);
+  return fn ? fn(base) : base;
+}
+
 export function initConstellation(tracking) {
   let echoT0 = null;
 
@@ -111,8 +193,8 @@ export function initConstellation(tracking) {
     }
 
     const cx = w / 2;
-    const cy = h * 0.58;
-    const fit = Math.min(w, h) * 0.42 * scale;
+    const cy = h * (opts.centerY != null ? opts.centerY : 0.58);
+    const fit = Math.min(w, h) * (opts.fitScale != null ? opts.fitScale : 0.42) * scale;
 
     const cos = Math.cos(sway);
     const sin = Math.sin(sway);
@@ -133,6 +215,29 @@ export function initConstellation(tracking) {
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
+
+    // Ghost target figure (#T3): dashed, dimmer, drawn beneath the live one.
+    if (opts.ghostPose) {
+      const ghost = targetPose(opts.ghostPose);
+      const gPts = {};
+      for (const k of Object.keys(ghost)) gPts[k] = project(ghost[k]);
+      ctx.setLineDash([4, 5]);
+      ctx.strokeStyle = `rgba(220,245,255,${0.30 * alphaMul})`;
+      ctx.lineWidth = 1;
+      for (const [a, b] of connections(gPts)) {
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctx.fillStyle = `rgba(220,245,255,${0.40 * alphaMul})`;
+      for (const k of Object.keys(gPts)) {
+        ctx.beginPath();
+        ctx.arc(gPts[k].x, gPts[k].y, 2.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
 
     // Asterism lines, 8% overshoot gap at each endpoint.
     ctx.strokeStyle = `rgba(160,210,255,${0.18 * alphaMul})`;

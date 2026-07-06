@@ -21,6 +21,8 @@ import { audio } from './audio.js';
 import { initSplash } from './ui/splash.js';
 import { initOverlay } from './ui/overlay.js';
 import { initPause } from './ui/pause.js';
+import { initConstellation } from './ui/constellation.js';
+import { initStationHud } from './ui/stationhud.js';
 
 const canvas = document.getElementById('gl');
 const overlay = document.getElementById('overlay');
@@ -81,7 +83,11 @@ async function boot() {
   // Splash first: the benchmark runs behind it while the intro is read.
   const splash = initSplash({ renderer, tracking, begin });
   initOverlay({ audio, splash });
-  initPause({ journey, splash, tracking });
+  // One shared constellation instance: pause + HUD (two would double the
+  // stationComplete echo listener).
+  const constellation = initConstellation(tracking);
+  initPause({ journey, splash, tracking, constellation });
+  initStationHud({ constellation });
 
   const tier = await runBenchmark(renderer);
   const median = (renderer._median || 0).toFixed(1);

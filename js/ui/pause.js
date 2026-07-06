@@ -11,10 +11,10 @@ import { initConstellation } from './constellation.js';
 
 const SURFACE_LINEAR_PROGRESS = 0.955;
 
-export function initPause({ journey, splash, tracking }) {
+export function initPause({ journey, splash, tracking, constellation }) {
   const gl = document.getElementById('gl');
   const overlay = document.getElementById('overlay');
-  const constellation = initConstellation(tracking);
+  if (!constellation) constellation = initConstellation(tracking);
 
   let mantras = [];
   let unseenMantras = [];
