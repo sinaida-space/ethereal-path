@@ -33,6 +33,7 @@ const state = {
   rays: [],
   light: 0,
   breathe: 0,
+  surface: 1, // Act-0: 1 at the splash surface, eases to 0 on begin (the dive)
 };
 
 const camera = new Camera(0.1);
@@ -106,6 +107,9 @@ async function boot() {
     state.progress = journey.progress;
     state.breathe = journey.breathe;
     state.light = journey.light;
+    // The dive: surface eases out over ~3s once the journey starts.
+    const surfTarget = journey.started ? 0 : 1;
+    state.surface += (surfTarget - state.surface) * Math.min(1, dt * 0.6);
 
     const sample = tracking.sample();
     camera.setTarget(sample.head.x, sample.head.y, sample.head.z);

@@ -10,6 +10,18 @@
   <canvas id="gl"></canvas>
   <div id="splash"></div>
   <div id="overlay"></div>
+  <!-- Goo filter for the wordmark: blur + alpha threshold makes drifting
+       letters merge like soap bubbles (referenced via CSS filter: url(#goo)). -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <filter id="goo">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"/>
+        <feColorMatrix in="blur" mode="matrix"
+          values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9" result="goo"/>
+        <feBlend in="SourceGraphic" in2="goo" mode="screen"/>
+      </filter>
+    </defs>
+  </svg>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>

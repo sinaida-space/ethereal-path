@@ -1,3 +1,21 @@
+/* ---- type: Velvetyne libre fonts, self-hosted (SIL OFL — see assets/fonts/) */
+@font-face {
+  font-family: 'Pilowlava';
+  src: url('../assets/fonts/Pilowlava-Regular.woff2') format('woff2');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Karrik';
+  src: url('../assets/fonts/Karrik-Regular.woff2') format('woff2');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Karrik';
+  font-style: italic;
+  src: url('../assets/fonts/Karrik-Italic.woff2') format('woff2');
+  font-display: swap;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -8,7 +26,7 @@ html, body {
   height: 100%;
   background: #000;
   color: #dfe6ee;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'Karrik', Georgia, serif;
   overflow: hidden;
 }
 
@@ -29,16 +47,107 @@ html, body {
   pointer-events: none;
 }
 
-/* ---- splash: text floating in the dark, no UI chrome ---- */
+/* ---- splash: glass floating on the water (Act-0 shows through) ---- */
 .splash {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.72);
-  color: #cfd8e3;
+  background: rgba(0, 6, 12, 0.18);
+  color: #dfeaf2;
   transition: opacity 1.5s ease;
   overflow-y: auto;
   z-index: 10;
+}
+
+/* ---- glassmorphism: bubble-panel over the live shader ---- */
+.glass {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(120, 210, 255, 0.04));
+  backdrop-filter: blur(14px) saturate(1.25);
+  -webkit-backdrop-filter: blur(14px) saturate(1.25);
+  border: 1px solid rgba(190, 235, 255, 0.22);
+  border-radius: 22px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -12px 30px rgba(90, 200, 255, 0.06),
+    0 18px 50px rgba(0, 0, 0, 0.45);
+}
+
+/* ---- wordmark: goo-merged Pilowlava letters drifting like bubbles ---- */
+.wordmark {
+  font-family: 'Pilowlava', 'Karrik', Georgia, serif;
+  font-weight: normal;
+  font-size: clamp(2.2rem, 7vw, 4rem);
+  letter-spacing: 0.02em;
+  color: #cfeeff;
+  filter: url(#goo) drop-shadow(0 0 26px rgba(120, 220, 255, 0.45));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 0.6rem;
+  line-height: 1.05;
+}
+.wm-l {
+  display: inline-block;
+  animation: wmFloat 5.2s ease-in-out infinite;
+  animation-delay: calc(var(--i) * -0.65s);
+}
+.wm-gap { width: 0.45em; }
+@keyframes wmFloat {
+  0%, 100% { transform: translateY(0.045em) translateX(-0.012em); }
+  50% { transform: translateY(-0.055em) translateX(0.012em); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wm-l { animation: none; }
+}
+
+/* ---- deck picker ---- */
+.deck-picker {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin: 1.4rem 0 1.2rem;
+  flex-wrap: wrap;
+}
+.deck-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  align-items: center;
+  min-width: 11rem;
+  padding: 1rem 1.4rem;
+  font: inherit;
+  color: #dfeaf2;
+  cursor: pointer;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.07), rgba(120, 210, 255, 0.03));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(190, 235, 255, 0.18);
+  border-radius: 999px;
+  transition: border-color 0.35s ease, box-shadow 0.35s ease, transform 0.35s ease;
+}
+.deck-card:hover, .deck-card:focus-visible {
+  border-color: rgba(160, 220, 255, 0.55);
+  outline: none;
+}
+.deck-card.selected {
+  border-color: rgba(170, 230, 255, 0.85);
+  box-shadow:
+    0 0 24px rgba(110, 210, 255, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.30);
+  transform: translateY(-2px);
+}
+.deck-title {
+  font-family: 'Pilowlava', 'Karrik', serif;
+  font-size: 1.15rem;
+  color: #d6f2ff;
+}
+.deck-sub { font-size: 0.85rem; opacity: 0.75; }
+
+.splash-privacy {
+  margin-top: 0.7rem;
+  font-size: 0.9rem;
+  font-style: italic;
+  opacity: 0.75;
 }
 .splash.fading { opacity: 0; }
 .splash.fading-in { animation: splashIn 1.5s ease; }
