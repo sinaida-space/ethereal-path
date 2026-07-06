@@ -71,6 +71,11 @@ export class FallbackSource {
   }
 
   _normFromClient(clientX, clientY) {
+    // Synthetic events (test harnesses, some assistive tech) can carry
+    // undefined coords; one NaN would poison the EMA forever. Ignore them.
+    if (!Number.isFinite(clientX) || !Number.isFinite(clientY)) {
+      return { x: this._pointerPos.x, y: this._pointerPos.y };
+    }
     const x = (clientX / window.innerWidth) * 2 - 1;
     const y = -((clientY / window.innerHeight) * 2 - 1);
     return { x, y };
@@ -160,6 +165,13 @@ export class FallbackSource {
   sample(dt = 1 / 60) {
     this._applyKeyNudges(dt);
 
+    // Self-heal if a non-finite value ever slipped into the smoothed state.
+    if (!Number.isFinite(this._head.x) || !Number.isFinite(this._head.y)) {
+      this._head = { x: 0, y: 0, z: 0, ok: true };
+      this._handL = { x: 0, y: 0, present: 0 };
+      this._handR = { x: 0, y: 0, present: 0 };
+    }
+
     this._head.x += (this._targetHead.x - this._head.x) * HEAD_ALPHA;
     this._head.y += (this._targetHead.y - this._head.y) * HEAD_ALPHA;
     this._head.z += (this._targetHead.z - this._head.z) * HEAD_ALPHA;
@@ -182,6 +194,13 @@ export class FallbackSource {
       head: { x: this._head.x, y: this._head.y, z: this._head.z, ok: this._head.ok },
       handL: { x: this._handL.x, y: this._handL.y, present: this._handL.present },
       handR: { x: this._handR.x, y: this._handR.y, present: this._handR.present },
+      // Synthesized pose (#22): the pointer drives yaw/pitch so exercise
+      // stations stay mode-blind; shrug/roll have no fallback source.
+      pose: {
+        yaw: this._head.x, pitch: this._head.y, roll: 0, shrug: 0,
+        shoulderL: { x: -0.35, y: -0.55 }, shoulderR: { x: 0.35, y: -0.55 },
+        ok: true,
+      },
     };
   }
 }
