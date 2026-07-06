@@ -8,6 +8,7 @@
 // edits. No storage, no new fonts/libraries.
 
 import { initConstellation } from './constellation.js';
+import { events } from '../events.js';
 
 const SURFACE_LINEAR_PROGRESS = 0.955;
 
@@ -42,10 +43,26 @@ export function initPause({ journey, splash, tracking, constellation }) {
   }
 
   // ---- rest button (mirrors .mute-btn styling) ----
+  // Hidden until the session actually starts — otherwise these show through
+  // the translucent splash background before there's anything to rest from.
   const restBtn = document.createElement('button');
   restBtn.className = 'corner-pill rest-btn';
   restBtn.textContent = '◦ rest';
+  restBtn.style.display = 'none';
   overlay.appendChild(restBtn);
+
+  // ---- finish button: always available at the top while running, whether
+  // paused or not — a direct route to the graceful early exit. ----
+  const finishBtn = document.createElement('button');
+  finishBtn.className = 'corner-pill finish-btn';
+  finishBtn.textContent = '◦ finish here';
+  finishBtn.style.display = 'none';
+  overlay.appendChild(finishBtn);
+
+  events.on('sessionStart', () => {
+    restBtn.style.display = '';
+    finishBtn.style.display = '';
+  });
 
   // ---- pause layer ----
   const layer = document.createElement('div');
@@ -115,10 +132,35 @@ export function initPause({ journey, splash, tracking, constellation }) {
     }, 2000);
   }
 
+  // Finishing from mid-pause is just "surface"; finishing while running goes
+  // straight to the black fade without ever showing the rest UI.
+  function finishNow() {
+    if (paused) {
+      surface();
+      return;
+    }
+    if (!canPause()) return;
+    paused = true;
+    journey.hold();
+    gl.classList.add('gl-dim');
+    layer.hidden = false;
+    layer.classList.add('surfacing');
+    setTimeout(() => {
+      layer.hidden = true;
+      layer.classList.remove('surfacing');
+      gl.classList.remove('gl-dim');
+      journey.jumpToLinear(SURFACE_LINEAR_PROGRESS);
+      journey.release();
+      paused = false;
+    }, 2000);
+  }
+
   restBtn.addEventListener('click', () => {
     if (paused) exitPause();
     else enterPause();
   });
+
+  finishBtn.addEventListener('click', finishNow);
 
   window.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
@@ -129,7 +171,11 @@ export function initPause({ journey, splash, tracking, constellation }) {
   returnBtn.addEventListener('click', exitPause);
   surfaceBtn.addEventListener('click', surface);
 
-  journey._events?.on?.('sessionEnd', () => { sessionOver = true; });
+  events.on('sessionEnd', () => {
+    sessionOver = true;
+    restBtn.style.display = 'none';
+    finishBtn.style.display = 'none';
+  });
 
-  return { enterPause, exitPause, surface };
+  return { enterPause, exitPause, surface, finishNow };
 }
