@@ -41,9 +41,11 @@ export class Journey {
   constructor() {
     this.started = false;
     this.paused = false;
+    this.held = false; // stations (#23) freeze the drift, not the breath
     this.ended = false;
 
     this.t = 0; // elapsed clock seconds (excludes paused time)
+    this._bt = 0; // breathing clock — runs through holds
     this.progress = 0; // eased 0..1
     this.breathe = 0;
     this.light = LIGHT_START;
@@ -57,8 +59,10 @@ export class Journey {
     if (this.started) return;
     this.started = true;
     this.paused = false;
+    this.held = false;
     this.ended = false;
     this.t = 0;
+    this._bt = 0;
     this.progress = 0;
     this.breathe = 0;
     this.light = LIGHT_START;
@@ -71,14 +75,16 @@ export class Journey {
     this.light = Math.min(1.0, this.light + amount);
   }
 
+  // Stations freeze the drift clock while the user exercises; breathing and
+  // light continue so the held world stays alive.
+  hold() { this.held = true; }
+  release() { this.held = false; }
+
   update(dt) {
-    if (!this.started || this.paused || this.ended) return;
+    if (!this.started || this.paused) return;
 
-    this.t += dt;
-    const linear = Math.min(1, this.t / JOURNEY_DURATION_S);
-    this.progress = easeInOutSine(linear);
-
-    this.breathe = 0.5 + 0.5 * Math.sin((this.t * 2 * Math.PI) / BREATHE_CYCLE_S);
+    this._bt += dt;
+    this.breathe = 0.5 + 0.5 * Math.sin((this._bt * 2 * Math.PI) / BREATHE_CYCLE_S);
 
     // Light decays toward LIGHT_DECAY_TARGET at LIGHT_DECAY_RATE per second.
     if (this.light > LIGHT_DECAY_TARGET) {
@@ -86,6 +92,12 @@ export class Journey {
     } else if (this.light < LIGHT_DECAY_TARGET) {
       this.light = Math.min(LIGHT_DECAY_TARGET, this.light + LIGHT_DECAY_RATE * dt);
     }
+
+    if (this.held || this.ended) return;
+
+    this.t += dt;
+    const linear = Math.min(1, this.t / JOURNEY_DURATION_S);
+    this.progress = easeInOutSine(linear);
 
     for (const boundary of ACT_BOUNDARIES) {
       if (!this._firedActs.has(boundary.progress) && linear >= boundary.progress) {
