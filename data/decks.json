@@ -63,7 +63,7 @@
     {
       "id": "full-surface",
       "title": "full surface",
-      "subtitle": "8 minutes · you will rise",
+      "subtitle": "8 minutes · you'll need to stand up",
       "driftSeconds": 210,
       "stations": [
         { "id": "settle", "cue": "settle in — breathe with the tunnel",

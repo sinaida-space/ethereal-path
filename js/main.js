@@ -92,7 +92,7 @@ async function boot() {
   // One shared constellation instance: pause + HUD (two would double the
   // stationComplete echo listener).
   const constellation = initConstellation(tracking);
-  initPause({ journey, splash, tracking, constellation });
+  initPause({ journey, splash, tracking, constellation, stations });
   initStationHud({ constellation });
 
   const tier = await runBenchmark(renderer);
