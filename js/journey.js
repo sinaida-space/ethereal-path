@@ -71,6 +71,7 @@ export class Journey {
     this.act = 1;
     this._firedActs.clear();
     this._firedCues.clear();
+    events.emit('sessionStart', {});
   }
 
   addLight(amount) {

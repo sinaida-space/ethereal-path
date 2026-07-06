@@ -3,8 +3,6 @@
 // row of tiles where clicking IS the action (no separate "continue" button).
 // Text floating in the dark; the world is the interface.
 
-const QUALITY_LABELS = { full: 'Full', light: 'Light', potato: 'Eco' };
-
 // The 5-second promise, then how it works, then privacy — in that order.
 const PROMISE_COPY =
   'a short movement ritual for people who live at their screens';
@@ -14,17 +12,17 @@ const HOW_COPY =
 const PRIVACY_COPY =
   'the camera (if you allow it) verifies movement on this device only — ' +
   'nothing is recorded, nothing leaves.';
+const PLAYLIST_URL = 'https://open.spotify.com/playlist/394UQrjBknxawNXIY8miep';
 
 const TOUCH = 'ontouchstart' in window;
 
-// Wordmark letters as individual spans so the goo filter can merge them
-// while they drift on offset phases — text behaving like water.
-function wordmarkHTML(text) {
-  return [...text].map((ch, i) =>
-    ch === ' '
-      ? '<span class="wm-gap"></span>'
-      : `<span class="wm-l" style="--i:${i}">${ch}</span>`
-  ).join('');
+// Plain text — the wordmark used to be individual goo-filtered letter spans,
+// but that broke word-wrap on narrow screens and mangled legibility. The
+// .psy ripple/chroma treatment (css/main.css) now carries the "alive" feel.
+function escapeHTML(text) {
+  return text.replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[ch]));
 }
 
 export function initSplash({ renderer, tracking, begin }) {
@@ -35,7 +33,7 @@ export function initSplash({ renderer, tracking, begin }) {
 
   root.innerHTML = `
     <div class="splash-inner glass">
-      <h1 class="wordmark" aria-label="ethereal path">${wordmarkHTML('ethereal path')}</h1>
+      <h1 class="wordmark">${escapeHTML('ethereal path')}</h1>
       <p class="splash-subtitle">${PROMISE_COPY}</p>
       <hr class="hairline">
       <p class="splash-intro">${HOW_COPY}</p>
@@ -84,16 +82,26 @@ export function initSplash({ renderer, tracking, begin }) {
     }
   }
 
-  // ---- Step 1: quality ----
+  // Every step past the first offers a way back to the top of the flow.
+  function backPillHTML() {
+    return '<button class="step-back" data-back>&larr; main menu</button>';
+  }
+  function bindBackPill() {
+    const back = stepArea.querySelector('[data-back]');
+    if (back) back.addEventListener('click', showQualityStep);
+  }
+
+  // ---- Step 1: quality (Full or Light only — Eco added noise without ----
+  // ---- adding a real choice most people needed) ----
   function showQualityStep() {
+    const effectiveTier = benchTier === 'potato' ? 'light' : benchTier;
+    if (benchTier === 'potato') renderer.setQuality('light');
     renderStep(`
       <p class="step-label">this machine measured ${benchMedian}ms per frame</p>
       <div class="tile-row">
-        <button class="tile${benchTier === 'full' ? ' selected' : ''}" data-q="full">Full</button>
-        <button class="tile${benchTier === 'light' ? ' selected' : ''}" data-q="light">Light</button>
-        <button class="tile${benchTier === 'potato' ? ' selected' : ''}" data-q="potato">Eco</button>
+        <button class="tile${effectiveTier === 'full' ? ' selected' : ''}" data-q="full">Full</button>
+        <button class="tile${effectiveTier === 'light' ? ' selected' : ''}" data-q="light">Light</button>
       </div>
-      ${benchTier === 'potato' ? '<p class="splash-eco-note">a gentler version has been prepared for this machine</p>' : ''}
     `, () => {
       stepArea.querySelectorAll('[data-q]').forEach((tile) => {
         tile.addEventListener('click', () => {
@@ -108,12 +116,14 @@ export function initSplash({ renderer, tracking, begin }) {
   // ---- Step 2: camera ----
   function showCameraStep() {
     renderStep(`
+      ${backPillHTML()}
       <p class="step-label">choose how you'd like to be seen</p>
       <div class="tile-row">
         <button class="tile" data-cam="yes">with camera</button>
         <button class="tile" data-cam="no">without camera</button>
       </div>
     `, () => {
+      bindBackPill();
       const camTiles = stepArea.querySelectorAll('[data-cam]');
       camTiles.forEach((tile) => {
         tile.addEventListener('click', async () => {
@@ -155,6 +165,7 @@ export function initSplash({ renderer, tracking, begin }) {
   // ---- Step 3: path (clicking a deck begins the session) ----
   function showPathStep() {
     renderStep(`
+      ${backPillHTML()}
       <p class="step-label">choose your path</p>
       <div class="tile-row">
         <button class="tile deck-tile" data-deck="desk-reset">
@@ -167,6 +178,7 @@ export function initSplash({ renderer, tracking, begin }) {
         </button>
       </div>
     `, () => {
+      bindBackPill();
       stepArea.querySelectorAll('[data-deck]').forEach((tile) => {
         tile.addEventListener('click', () => {
           deckId = tile.dataset.deck;
@@ -207,14 +219,22 @@ export function initSplash({ renderer, tracking, begin }) {
       benchMedian = median;
       showQualityStep();
     },
-    showEnd() {
+    async showEnd() {
       root.style.display = '';
       root.classList.add('fading-in');
+      let quote = 'thank you for the five minutes you gave your body.';
+      try {
+        const data = await (await fetch('data/mantras.json')).json();
+        const list = Array.isArray(data.mantras) ? data.mantras : [];
+        if (list.length) quote = list[Math.floor(Math.random() * list.length)];
+      } catch (err) { /* keep the fallback line */ }
       root.innerHTML = `
         <div class="splash-inner splash-end glass">
-          <h1 class="wordmark" aria-label="you're back">${wordmarkHTML("you're back")}</h1>
-          <p class="splash-subtitle">the path remains — return when your shoulders ask for it</p>
+          <h1 class="wordmark">${escapeHTML('you\'re back')}</h1>
+          <p class="splash-subtitle">thank you — the path remains, return when your shoulders ask for it</p>
+          <p class="end-quote">${escapeHTML(quote)}</p>
           <div class="tile-row">
+            <a class="tile" href="${PLAYLIST_URL}" target="_blank" rel="noopener">unwind with a playlist</a>
             <button class="tile btn-again">begin again</button>
           </div>
           <p class="splash-credit">made by <a href="https://sinaida.eu" target="_blank" rel="noopener">Sinaida Krivchenko · sinaida.eu</a></p>

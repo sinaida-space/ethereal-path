@@ -1,21 +1,31 @@
-/* ---- type: Velvetyne libre fonts, self-hosted (SIL OFL — see assets/fonts/) */
+/* ---- type: Space Mono (Google Fonts, SIL OFL), self-hosted — one font,
+   everywhere, no special-cased wordmark face. See assets/fonts/. ---- */
 @font-face {
-  font-family: 'Pilowlava';
-  src: url('../assets/fonts/Pilowlava-Regular.woff2') format('woff2');
-  font-display: swap;
-}
-/* Lineal stands in for Simplifica (personal-use-only license forbids
-   web-embedding) — a similar thin geometric sans, also libre/OFL. */
-@font-face {
-  font-family: 'Lineal';
-  src: url('../assets/fonts/Lineal-Light.woff2') format('woff2');
-  font-weight: 300;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Lineal';
-  src: url('../assets/fonts/Lineal-Regular.woff2') format('woff2');
+  font-family: 'Space Mono';
+  src: url('../assets/fonts/SpaceMono-Regular.woff2') format('woff2');
   font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Space Mono';
+  src: url('../assets/fonts/SpaceMono-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Space Mono';
+  src: url('../assets/fonts/SpaceMono-Italic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Space Mono';
+  src: url('../assets/fonts/SpaceMono-BoldItalic.woff2') format('woff2');
+  font-weight: 700;
+  font-style: italic;
   font-display: swap;
 }
 
@@ -29,9 +39,9 @@ html, body {
   height: 100%;
   background: #000;
   color: #eaf5ff;
-  font-family: 'Lineal', Georgia, serif;
-  font-weight: 300;
-  letter-spacing: 0.01em;
+  font-family: 'Space Mono', monospace;
+  font-weight: 400;
+  letter-spacing: 0;
   overflow: hidden;
 }
 
@@ -77,32 +87,29 @@ html, body {
     0 18px 50px rgba(0, 0, 0, 0.45);
 }
 
-/* ---- wordmark: goo-merged Pilowlava letters drifting like bubbles ---- */
+/* ---- wordmark: plain, legible, Space Mono — its own slower, wider ripple
+   and chroma separation carries the psychedelic feel without breaking
+   layout the way the old per-letter goo filter did. ---- */
 .wordmark {
-  font-family: 'Pilowlava', Georgia, serif;
-  font-weight: normal;
-  font-size: clamp(2.2rem, 7vw, 4rem);
-  letter-spacing: 0.02em;
-  color: #cfeeff;
-  filter: url(#goo) drop-shadow(0 0 26px rgba(120, 220, 255, 0.45));
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  font-size: clamp(1.8rem, 6vw, 3.2rem);
+  letter-spacing: 0.06em;
+  color: #eaf6ff;
+  text-shadow: 0 0 26px rgba(120, 220, 255, 0.45);
+  text-align: center;
   margin-bottom: 0.6rem;
-  line-height: 1.05;
+  line-height: 1.25;
+  animation: psyFloat 7s ease-in-out infinite, wordmarkChroma 9s linear infinite;
 }
-.wm-l {
-  display: inline-block;
-  animation: wmFloat 5.2s ease-in-out infinite;
-  animation-delay: calc(var(--i) * -0.65s);
-}
-.wm-gap { width: 0.45em; }
-@keyframes wmFloat {
-  0%, 100% { transform: translateY(0.045em) translateX(-0.012em); }
-  50% { transform: translateY(-0.055em) translateX(0.012em); }
+@keyframes wordmarkChroma {
+  0%   { filter: drop-shadow(3px 0 0 rgba(255, 70, 120, 0.4)) drop-shadow(-3px 0 0 rgba(70, 220, 255, 0.4)); }
+  33%  { filter: drop-shadow(-2px 2.4px 0 rgba(255, 70, 120, 0.4)) drop-shadow(2px -2.4px 0 rgba(70, 220, 255, 0.4)); }
+  66%  { filter: drop-shadow(2.4px -2px 0 rgba(255, 70, 120, 0.4)) drop-shadow(-2.4px 2px 0 rgba(70, 220, 255, 0.4)); }
+  100% { filter: drop-shadow(3px 0 0 rgba(255, 70, 120, 0.4)) drop-shadow(-3px 0 0 rgba(70, 220, 255, 0.4)); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .wm-l { animation: none; }
+  .wordmark { animation: none; }
 }
 
 /* ---- unified glass tile: every choice in the app is one of these ---- */
@@ -149,6 +156,36 @@ html, body {
   transform: translateY(-2px);
 }
 .tile:disabled { opacity: 0.35; cursor: default; transform: none; }
+
+/* ---- psychedelic ripple: every tile/pill/text-plate floats on its own
+   phase and drifts through a slow RGB (chromatic) separation. `translate`
+   is used instead of `transform` for the bob so it composites cleanly with
+   the existing hover/selected `transform: translateY(...)` rather than
+   fighting it — modern browsers animate translate/rotate/scale alongside
+   transform as independent layers. ---- */
+@keyframes psyFloat {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -5px; }
+}
+@keyframes psyChroma {
+  0%   { filter: drop-shadow(1.6px 0 0 rgba(255, 70, 120, 0.45)) drop-shadow(-1.6px 0 0 rgba(70, 220, 255, 0.45)); }
+  33%  { filter: drop-shadow(-1.1px 1.3px 0 rgba(255, 70, 120, 0.45)) drop-shadow(1.1px -1.3px 0 rgba(70, 220, 255, 0.45)); }
+  66%  { filter: drop-shadow(1.3px -1.1px 0 rgba(255, 70, 120, 0.45)) drop-shadow(-1.3px 1.1px 0 rgba(70, 220, 255, 0.45)); }
+  100% { filter: drop-shadow(1.6px 0 0 rgba(255, 70, 120, 0.45)) drop-shadow(-1.6px 0 0 rgba(70, 220, 255, 0.45)); }
+}
+.tile, .corner-pill, .text-plate, .station-hud {
+  animation: psyFloat 5.2s ease-in-out infinite, psyChroma 7.3s linear infinite;
+}
+/* Non-integer-ratio delays so panels drift out of phase with each other
+   instead of bobbing in unison. */
+.tile-row .tile:nth-child(2) { animation-delay: -1.7s, -2.4s; }
+.tile-row .tile:nth-child(3) { animation-delay: -3.1s, -4.9s; }
+.mute-btn { animation-delay: -0.9s, -1.6s; }
+.rest-btn { animation-delay: -2.6s, -3.3s; }
+.finish-btn { animation-delay: -4.1s, -0.4s; }
+@media (prefers-reduced-motion: reduce) {
+  .tile, .corner-pill, .text-plate, .station-hud { animation: none; }
+}
 
 .deck-title {
   font-size: 1.1rem;
@@ -388,6 +425,38 @@ html, body {
 .corner-pill:hover, .corner-pill:focus-visible { opacity: 1; border-color: rgba(160, 220, 255, 0.5); outline: none; }
 .mute-btn { right: 1.2rem; }
 .rest-btn { left: 1.2rem; }
+.finish-btn {
+  bottom: auto;
+  top: 1.2rem;
+  left: 50%;
+  /* Static centering uses `transform` (not `translate`) so it composes
+     independently of the animated `translate` float — see psyFloat. */
+  transform: translateX(-50%);
+}
+
+/* ---- step-back: subtle link back to the main menu from steps 2 & 3 ---- */
+.step-back {
+  display: block;
+  margin: 0 auto 0.9rem;
+  background: none;
+  border: none;
+  color: #eaf6ff;
+  opacity: 0.55;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+.step-back:hover, .step-back:focus-visible { opacity: 1; outline: none; }
+
+/* ---- end screen: quote + playlist ---- */
+.end-quote {
+  margin: 0.8rem 0 0.4rem;
+  font-style: italic;
+  font-size: 1.05rem;
+  opacity: 0.9;
+  line-height: 1.5;
+}
 
 /* ---- tunnel dim (pause active) ---- */
 #gl.gl-dim {
