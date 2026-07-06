@@ -49,8 +49,14 @@ function begin(opts = {}) {
   if (stations.driftSeconds) journey.setDuration(stations.driftSeconds);
   // audio.init() needs a user gesture; begin() is always click/key-triggered.
   audio.init();
+  audio.dive();
   journey.start();
 }
+
+// First splash gesture starts the underwater bed (AudioContext gesture rule).
+window.addEventListener('pointerdown', () => {
+  if (!journey.started) audio.initSurface();
+}, { once: true });
 
 // The splash screen owns session start and camera choice; 'm' toggles mute.
 window.addEventListener('keydown', (e) => {

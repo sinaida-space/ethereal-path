@@ -20,6 +20,66 @@ class AudioEngine {
     this._bedFilter = null;
     this._shimmerIn = null;
     this._act = 1;
+    this._surfaceMode = false;
+    this._ambientTimer = null;
+  }
+
+  // ---- Act-0 water (v1.2, #30) ------------------------------------------
+  // Called from the first splash gesture: the bed starts as an *underwater*
+  // wash (deeper lowpass, slower swell) with sparse ambient bubble pops.
+  // dive() morphs it into the tunnel bed and plays the plunge.
+  initSurface() {
+    this.init();
+    if (!this.ctx || this._surfaceMode) return;
+    this._surfaceMode = true;
+    const t = this.ctx.currentTime;
+    this._bedFilter.frequency.setTargetAtTime(190, t, 0.5);
+    this._bedGain.gain.setTargetAtTime(0.030, t, 0.5);
+    const ambient = () => {
+      if (!this.muted && this._surfaceMode) {
+        this._bubble(0.020 + Math.random() * 0.02, 500 + Math.random() * 900);
+      }
+      this._ambientTimer = setTimeout(ambient, 1800 + Math.random() * 4200);
+    };
+    this._ambientTimer = setTimeout(ambient, 1200);
+  }
+
+  dive() {
+    if (!this.ctx || !this._surfaceMode) return;
+    this._surfaceMode = false;
+    if (this._ambientTimer) { clearTimeout(this._ambientTimer); this._ambientTimer = null; }
+    const t = this.ctx.currentTime;
+    // The plunge: a dark rushing swell + a cluster of bubbles racing past.
+    if (!this.muted) {
+      this._noiseSwell(240, 1.2, 0.055, 0.5, 2.6);
+      for (let i = 0; i < 7; i++) {
+        setTimeout(() => this._bubble(0.03, 700 + Math.random() * 1300), 150 + i * 260 + Math.random() * 120);
+      }
+    }
+    this._bedFilter.frequency.setTargetAtTime(320, t, 2.5);
+    this._bedGain.gain.setTargetAtTime(0.018, t, 2.5);
+  }
+
+  // Minnaert-style bubble pop: a short sine whose pitch chirps *up* as the
+  // bubble shrinks, amplitude decaying exponentially. Every pop unique.
+  _bubble(peak, f0) {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    const t = ctx.currentTime;
+    const dur = 0.07 + Math.random() * 0.10;
+    const osc = ctx.createOscillator();
+    osc.frequency.setValueAtTime(f0, t);
+    osc.frequency.exponentialRampToValueAtTime(f0 * (1.4 + Math.random() * 0.5), t + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(Math.max(peak, 0.0002), t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(g);
+    g.connect(this._master);
+    if (Math.random() < 0.4) g.connect(this._shimmerIn);
+    osc.start(t);
+    osc.stop(t + dur + 0.05);
+    osc.onended = () => { osc.disconnect(); g.disconnect(); };
   }
 
   // Idempotent. Creates/resumes the context, builds the graph, subscribes.
@@ -234,6 +294,17 @@ class AudioEngine {
     });
     events.on('cue', () => {
       if (!this.muted) this._tone(1046, 0.02, 0.005, 0.06, this._master);
+    });
+    // Every verified rep pops a small bubble — physical feedback, not a chime.
+    events.on('stationRep', () => {
+      if (!this.muted) this._bubble(0.035, 800 + Math.random() * 800);
+    });
+    // UI touches are bubbles too (splash buttons, deck cards).
+    document.addEventListener('click', (e) => {
+      if (this.muted || !this.ctx) return;
+      if (e.target && e.target.closest && e.target.closest('button')) {
+        this._bubble(0.03, 900 + Math.random() * 700);
+      }
     });
     events.on('sessionEnd', () => {
       if (this.muted) return;
