@@ -61,6 +61,7 @@ export class Journey {
     this.started = true;
     this.paused = false;
     this.held = false;
+    this._holds = 0;
     this.ended = false;
     this.t = 0;
     this._bt = 0;
@@ -77,9 +78,17 @@ export class Journey {
   }
 
   // Stations freeze the drift clock while the user exercises; breathing and
-  // light continue so the held world stays alive.
-  hold() { this.held = true; }
-  release() { this.held = false; }
+  // light continue so the held world stays alive. Refcounted (#30): the pause
+  // screen and an open station can hold simultaneously — resuming from pause
+  // must not release the station's hold.
+  hold() {
+    this._holds = (this._holds || 0) + 1;
+    this.held = true;
+  }
+  release() {
+    this._holds = Math.max(0, (this._holds || 0) - 1);
+    this.held = this._holds > 0;
+  }
 
   // Deck-driven drift length (#T1). Call before start().
   setDuration(seconds) {
