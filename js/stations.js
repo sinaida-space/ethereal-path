@@ -17,70 +17,36 @@ const FADE_IN_S = 2.5;
 const FLARE_S = 2.0;
 const AUTO_CLOSE_S = 2.0;  // arc sweep when a timeout closes the ring
 
-// Signal readers: everything the station table can verify against.
+// Signal readers: everything a deck's station table can verify against.
 const SIGNALS = {
-  yaw:     (s) => s.pose.yaw,
-  pitch:   (s) => s.pose.pitch,
-  roll:    (s) => s.pose.roll,
-  shrug:   (s) => s.pose.shrug,
-  handAny: (s) => Math.max(
+  yaw:      (s) => s.pose.yaw,
+  pitch:    (s) => s.pose.pitch,
+  roll:     (s) => s.pose.roll,
+  shrug:    (s) => s.pose.shrug,
+  standing: (s) => s.pose.standing,
+  rise:     (s) => s.pose.rise,
+  handAny:  (s) => Math.max(
     s.handL.present > 0.5 ? s.handL.y : -2,
     s.handR.present > 0.5 ? s.handR.y : -2),
 };
 
-// The warmup sequence — a real neck/shoulder class, one ring at a time.
-// phases: ordered targets; each needs its signal past the threshold for
-// `hold` seconds. `rounds` repeats the phase list. fallback:'auto' marks
-// stations whose signal has no pointer equivalent (they self-complete in
-// fallback mode while the cue guides the user on trust).
-const STATIONS = [
-  { id: 'settle', cue: 'settle in — breathe with the tunnel',
-    type: 'auto', duration: 12 },
-  { id: 'neck-turns', cue: 'slowly turn your head to the left … then to the right',
-    phases: [
-      { sig: 'yaw', below: -0.5, hold: 1.2 },
-      { sig: 'yaw', above: -0.15, hold: 0.4 },
-      { sig: 'yaw', above: 0.5, hold: 1.2 },
-      { sig: 'yaw', below: 0.15, hold: 0.4 },
-    ], rounds: 2 },
-  { id: 'neck-tilts', cue: 'let one ear sink toward its shoulder … then the other',
-    phases: [
-      { sig: 'roll', below: -0.4, hold: 1.2 },
-      { sig: 'roll', above: -0.1, hold: 0.4 },
-      { sig: 'roll', above: 0.4, hold: 1.2 },
-      { sig: 'roll', below: 0.1, hold: 0.4 },
-    ], rounds: 2, fallback: 'auto' },
-  { id: 'look-up', cue: 'look slowly up into the light … then tuck your chin',
-    phases: [
-      { sig: 'pitch', above: 0.45, hold: 1.2 },
-      { sig: 'pitch', below: -0.3, hold: 1.0 },
-    ], rounds: 2 },
-  { id: 'shrug', cue: 'draw your shoulders up to your ears … and let them fall',
-    phases: [
-      { sig: 'shrug', above: 0.4, hold: 0.8 },
-      { sig: 'shrug', below: 0.1, hold: 0.8 },
-    ], rounds: 2, fallback: 'auto' },
-  { id: 'arm-left', cue: 'reach your left hand up into the ring',
-    phases: [{ sig: 'handAny', above: 0.35, hold: 1.5 }], rounds: 2, lateral: -0.5 },
-  { id: 'arm-right', cue: 'now the right hand — reach for the light',
-    phases: [{ sig: 'handAny', above: 0.35, hold: 1.5 }], rounds: 2, lateral: 0.5 },
-  { id: 'reach-across', cue: 'reach across your body into the ring',
-    phases: [{ sig: 'handAny', above: 0.1, hold: 1.2 }], rounds: 2, lateral: 0.7 },
-  { id: 'look-behind', cue: 'turn as far as feels kind — first left, then right',
-    phases: [
-      { sig: 'yaw', below: -0.75, hold: 1.0 },
-      { sig: 'yaw', above: 0.0, hold: 0.3 },
-      { sig: 'yaw', above: 0.75, hold: 1.0 },
-      { sig: 'yaw', below: 0.0, hold: 0.3 },
-    ], rounds: 1 },
-];
+// The warmup choreography lives in data/decks.json (#T1): each deck is an
+// ordered station list. phases: ordered targets; each needs its signal past
+// the threshold for `hold` seconds. `rounds` repeats the phase list.
+// fallback:'auto' marks stations whose signal has no pointer equivalent
+// (they self-complete in fallback mode while the cue guides on trust).
+// Optional per-phase `pose` keywords drive the ghost target figure (#T3).
 
 export class Stations {
   constructor() {
     this._deck = new Rays(); // used purely as the question-deck holder
     this.ready = false;
 
-    this._queue = STATIONS.slice();
+    this.decks = [];      // [{id,title,subtitle,driftSeconds}] for the picker
+    this._deckDefs = {};  // id -> full deck definition
+    this._active = null;  // chosen deck def
+
+    this._queue = [];
     this._idle = 0;
     this._gap = FIRST_GAP_S;
 
@@ -98,9 +64,35 @@ export class Stations {
   }
 
   async load() {
-    await this._deck.loadDeck();
+    const [, decksRes] = await Promise.all([
+      this._deck.loadDeck(),
+      fetch('data/decks.json'),
+    ]);
+    const data = await decksRes.json();
+    for (const d of data.decks) {
+      this._deckDefs[d.id] = d;
+      this.decks.push({
+        id: d.id, title: d.title, subtitle: d.subtitle,
+        driftSeconds: d.driftSeconds,
+      });
+    }
+    this.setDeck(data.decks[0].id);
     this.ready = true;
   }
+
+  // Select a deck by id (splash picker). Stations are deep-cloned because the
+  // engine mutates station objects (timeout mercy rewrites `duration`).
+  setDeck(id) {
+    const def = this._deckDefs[id];
+    if (!def) return;
+    this._active = def;
+    this._queue = JSON.parse(JSON.stringify(def.stations));
+    this._idle = 0;
+    this._gap = FIRST_GAP_S;
+  }
+
+  get deckId() { return this._active ? this._active.id : null; }
+  get driftSeconds() { return this._active ? this._active.driftSeconds : null; }
 
   _totalPhases(st) {
     return st.type === 'auto' ? 1 : st.phases.length * st.rounds;
@@ -122,6 +114,21 @@ export class Stations {
     journey.hold();
     events.emit('raySpawn', { index: st.id });
     events.emit('cue', { text: st.cue });
+    // Legibility HUD (#T3): who engages, how to do it, target pose, rep total.
+    events.emit('stationEngage', {
+      id: st.id,
+      guide: st.guide || '',
+      pose: this._currentPose(),
+      of: this._totalPhases(st),
+    });
+  }
+
+  _currentPose() {
+    const st = this._st;
+    if (!st) return null;
+    if (st.type === 'auto' || this._mode === 'auto') return st.pose || null;
+    const phase = st.phases[this._phaseIdx % st.phases.length];
+    return (phase && phase.pose) || st.pose || null;
   }
 
   _complete(journey) {
@@ -187,7 +194,14 @@ export class Stations {
           this._phaseIdx += 1;
           this._phaseHold = 0;
           events.emit('stationRep', { id: st.id, phase: this._phaseIdx, of: total });
-          if (this._phaseIdx >= total) this._complete(journey);
+          if (this._phaseIdx >= total) {
+            this._complete(journey);
+          } else {
+            events.emit('stationPhase', {
+              id: st.id, pose: this._currentPose(),
+              phase: this._phaseIdx, of: total,
+            });
+          }
         }
       }
       return this._toState();

@@ -46,6 +46,7 @@ export class Journey {
 
     this.t = 0; // elapsed clock seconds (excludes paused time)
     this._bt = 0; // breathing clock — runs through holds
+    this._duration = JOURNEY_DURATION_S; // decks override via setDuration()
     this.progress = 0; // eased 0..1
     this.breathe = 0;
     this.light = LIGHT_START;
@@ -80,6 +81,16 @@ export class Journey {
   hold() { this.held = true; }
   release() { this.held = false; }
 
+  // Deck-driven drift length (#T1). Call before start().
+  setDuration(seconds) {
+    if (Number.isFinite(seconds) && seconds > 0) this._duration = seconds;
+  }
+
+  // Jump the clock to a linear-progress point (pause.js 'surface' exit).
+  jumpToLinear(p) {
+    this.t = Math.max(0, Math.min(1, p)) * this._duration;
+  }
+
   update(dt) {
     if (!this.started || this.paused) return;
 
@@ -96,7 +107,7 @@ export class Journey {
     if (this.held || this.ended) return;
 
     this.t += dt;
-    const linear = Math.min(1, this.t / JOURNEY_DURATION_S);
+    const linear = Math.min(1, this.t / this._duration);
     this.progress = easeInOutSine(linear);
 
     for (const boundary of ACT_BOUNDARIES) {
