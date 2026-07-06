@@ -32,10 +32,21 @@ const EASE_BACK_MS = 2000; // ease values back to 0 over this window once stale
 
 // MediaPipe Pose landmark indices we need (BlazePose topology).
 const LM_NOSE = 0;
+const LM_LEFT_EAR = 7;
+const LM_RIGHT_EAR = 8;
 const LM_LEFT_SHOULDER = 11;
 const LM_RIGHT_SHOULDER = 12;
+const LM_LEFT_ELBOW = 13;
+const LM_RIGHT_ELBOW = 14;
 const LM_LEFT_WRIST = 15;
 const LM_RIGHT_WRIST = 16;
+
+const POSE_ALPHA = 0.2;
+// Gains map raw geometric ratios onto a comfortable [-1,1] exercise range.
+const YAW_GAIN = 1.6;
+const PITCH_GAIN = 2.0;
+const ROLL_GAIN = 2.5;
+const SHRUG_GAIN = 6.0;
 
 export class Tracking {
   constructor() {
@@ -62,6 +73,21 @@ export class Tracking {
     // Calibration baseline (shoulder width proxy for z=0).
     this._baselineSamples = [];
     this._baselineShoulderWidth = null;
+
+    // Pose signals for exercise verification (#22): baseline-relative,
+    // smoothed head yaw/pitch/roll and shoulder shrug, plus raw shoulder
+    // positions for the constellation.
+    this._pose = {
+      yaw: 0, pitch: 0, roll: 0, shrug: 0,
+      shoulderL: { x: -0.35, y: -0.55 },
+      shoulderR: { x: 0.35, y: -0.55 },
+      ok: false,
+    };
+    this._poseBaseAcc = [];
+    this._poseBase = null; // { yaw, pitch, roll, shoulderY }
+
+    // Latest raw landmark array (camera mode) for the constellation overlay.
+    this.landmarks = null;
   }
 
   async start(opts = {}) {
@@ -224,6 +250,8 @@ export class Tracking {
     const rs = lm[LM_RIGHT_SHOULDER];
     const lw = lm[LM_LEFT_WRIST];
     const rw = lm[LM_RIGHT_WRIST];
+    const le = lm[LM_LEFT_EAR];
+    const re = lm[LM_RIGHT_EAR];
 
     if (!nose || !ls || !rs) {
       this._markStale(nowMs);
@@ -232,6 +260,7 @@ export class Tracking {
 
     this._lastDetectionTime = nowMs;
     this._staleSinceTime = 0;
+    this.landmarks = lm;
 
     // MediaPipe image coords: x,y in [0,1], origin top-left, already mirrored
     // for a front camera view (selfie mode) by the browser's getUserMedia
@@ -255,6 +284,11 @@ export class Tracking {
       z = clamp((shoulderWidth - this._baselineShoulderWidth) / this._baselineShoulderWidth, -1, 1);
     }
 
+    if (!Number.isFinite(nx) || !Number.isFinite(ny)) {
+      this._markStale(nowMs);
+      return;
+    }
+
     this._head.x += (nx - this._head.x) * HEAD_ALPHA;
     this._head.y += (ny - this._head.y) * HEAD_ALPHA;
     this._head.z += (z - this._head.z) * HEAD_ALPHA;
@@ -262,6 +296,58 @@ export class Tracking {
 
     this._updateHand(this._handL, lw);
     this._updateHand(this._handR, rw);
+    this._updatePose(nose, le, re, ls, rs);
+  }
+
+  // ---- pose signals (#22): yaw/pitch from nose vs ear midpoint scaled by
+  // ear distance, roll from the ear line, shrug from shoulder rise — all
+  // baseline-relative (recalibrate() re-zeros) and EMA-smoothed.
+  _updatePose(nose, le, re, ls, rs) {
+    const mx = (p) => -(p.x * 2 - 1);
+    const my = (p) => -(p.y * 2 - 1);
+
+    const p = this._pose;
+    p.shoulderL.x += (mx(ls) - p.shoulderL.x) * POSE_ALPHA;
+    p.shoulderL.y += (my(ls) - p.shoulderL.y) * POSE_ALPHA;
+    p.shoulderR.x += (mx(rs) - p.shoulderR.x) * POSE_ALPHA;
+    p.shoulderR.y += (my(rs) - p.shoulderR.y) * POSE_ALPHA;
+
+    if (!le || !re) { p.ok = false; return; }
+    const emx = (mx(le) + mx(re)) / 2;
+    const emy = (my(le) + my(re)) / 2;
+    const earDist = Math.hypot(mx(re) - mx(le), my(re) - my(le));
+    if (!(earDist > 1e-3)) { p.ok = false; return; }
+
+    const yawRaw = (mx(nose) - emx) / earDist;
+    const pitchRaw = (my(nose) - emy) / earDist;
+    const rollRaw = Math.atan2(my(re) - my(le), mx(re) - mx(le));
+    const shoulderY = (my(ls) + my(rs)) / 2;
+
+    if (!Number.isFinite(yawRaw) || !Number.isFinite(pitchRaw) || !Number.isFinite(rollRaw)) {
+      p.ok = false;
+      return;
+    }
+
+    if (this._poseBase === null) {
+      this._poseBaseAcc.push({ yaw: yawRaw, pitch: pitchRaw, roll: rollRaw, shoulderY });
+      if (this._poseBaseAcc.length >= BASELINE_SAMPLES) {
+        const n = this._poseBaseAcc.length;
+        const mean = (k) => this._poseBaseAcc.reduce((a, s) => a + s[k], 0) / n;
+        this._poseBase = {
+          yaw: mean('yaw'), pitch: mean('pitch'),
+          roll: mean('roll'), shoulderY: mean('shoulderY'),
+        };
+      }
+      p.ok = false;
+      return;
+    }
+
+    const b = this._poseBase;
+    p.yaw += (clamp((yawRaw - b.yaw) * YAW_GAIN, -1, 1) - p.yaw) * POSE_ALPHA;
+    p.pitch += (clamp((pitchRaw - b.pitch) * PITCH_GAIN, -1, 1) - p.pitch) * POSE_ALPHA;
+    p.roll += (clamp((rollRaw - b.roll) * ROLL_GAIN, -1, 1) - p.roll) * POSE_ALPHA;
+    p.shrug += (clamp((shoulderY - b.shoulderY) * SHRUG_GAIN, -1, 1) - p.shrug) * POSE_ALPHA;
+    p.ok = true;
   }
 
   _updateHand(handState, wristLandmark) {
@@ -284,6 +370,8 @@ export class Tracking {
     const staleFor = nowMs - this._staleSinceTime;
     if (staleFor > STALE_MS) {
       this._head.ok = false;
+      this._pose.ok = false;
+      this.landmarks = null;
       const easeT = clamp((staleFor - STALE_MS) / EASE_BACK_MS, 0, 1);
       // Ease remaining values back toward 0 over EASE_BACK_MS.
       this._head.x *= 1 - easeT * 0.05;
@@ -302,6 +390,8 @@ export class Tracking {
   recalibrate() {
     if (this.mode === 'camera') {
       this._resetBaseline();
+      this._poseBaseAcc = [];
+      this._poseBase = null;
     } else if (this._fallback) {
       this._fallback.recalibrate();
     }
@@ -309,10 +399,17 @@ export class Tracking {
 
   sample() {
     if (this.mode === 'camera') {
+      const p = this._pose;
       return {
         head: { x: this._head.x, y: this._head.y, z: this._head.z, ok: this._head.ok },
         handL: { x: this._handL.x, y: this._handL.y, present: this._handL.present },
         handR: { x: this._handR.x, y: this._handR.y, present: this._handR.present },
+        pose: {
+          yaw: p.yaw, pitch: p.pitch, roll: p.roll, shrug: p.shrug,
+          shoulderL: { x: p.shoulderL.x, y: p.shoulderL.y },
+          shoulderR: { x: p.shoulderR.x, y: p.shoulderR.y },
+          ok: p.ok,
+        },
       };
     }
     if (this._fallback) {
@@ -322,6 +419,11 @@ export class Tracking {
       head: { x: 0, y: 0, z: 0, ok: false },
       handL: { x: 0, y: 0, present: 0 },
       handR: { x: 0, y: 0, present: 0 },
+      pose: {
+        yaw: 0, pitch: 0, roll: 0, shrug: 0,
+        shoulderL: { x: -0.35, y: -0.55 }, shoulderR: { x: 0.35, y: -0.55 },
+        ok: false,
+      },
     };
   }
 
