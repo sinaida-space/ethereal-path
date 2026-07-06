@@ -1,5 +1,6 @@
-// splash.js — the artwork's front door (#10): intro, credit, performance
-// check, quality picker, camera choice, calibration, and the end screen.
+// splash.js — the artwork's front door (#10, reworked in v1.2 for clarity):
+// intro, then three sequential glass steps — quality, camera, path — each a
+// row of tiles where clicking IS the action (no separate "continue" button).
 // Text floating in the dark; the world is the interface.
 
 const QUALITY_LABELS = { full: 'Full', light: 'Light', potato: 'Eco' };
@@ -14,7 +15,6 @@ const PRIVACY_COPY =
   'the camera (if you allow it) verifies movement on this device only — ' +
   'nothing is recorded, nothing leaves.';
 
-// Deck ids must match data/decks.json.
 const TOUCH = 'ontouchstart' in window;
 
 // Wordmark letters as individual spans so the goo filter can merge them
@@ -40,73 +40,150 @@ export function initSplash({ renderer, tracking, begin }) {
       <hr class="hairline">
       <p class="splash-intro">${HOW_COPY}</p>
       <p class="splash-privacy">${PRIVACY_COPY}</p>
-      <div class="deck-picker" role="radiogroup" aria-label="choose your practice">
-        <button class="deck-card selected" data-deck="desk-reset" role="radio" aria-checked="true">
-          <span class="deck-title">desk reset</span>
-          <span class="deck-sub">5 minutes · seated</span>
-        </button>
-        <button class="deck-card" data-deck="full-surface" role="radio" aria-checked="false">
-          <span class="deck-title">full surface</span>
-          <span class="deck-sub">8 minutes · you will rise</span>
-        </button>
-      </div>
-      <p class="splash-bench shimmer">measuring this machine's light&hellip;</p>
-      <p class="splash-quality" hidden>
-        quality:
-        <select class="quality-select" aria-label="rendering quality">
-          <option value="full">Full</option>
-          <option value="light">Light</option>
-          <option value="potato">Eco</option>
-        </select>
-      </p>
-      <p class="splash-eco-note" hidden>a gentler version has been prepared for this machine</p>
-      <div class="splash-buttons">
-        <button class="btn btn-camera" disabled>begin with camera</button>
-        <button class="btn btn-plain" disabled>begin without camera</button>
-      </div>
-      <p class="splash-fallback-note" hidden>the camera didn't answer — guiding by hand instead</p>
+      <div class="step-area"></div>
       <p class="splash-credit">
         created by <a href="https://sinaida.eu" target="_blank" rel="noopener">Sinaida Krivchenko — sinaida.eu</a>
       </p>
     </div>
     <div class="calibration" hidden>
-      <div class="cal-circle"></div>
-      <p class="cal-text">sit comfortably — rest your eyes on the circle</p>
+      <div class="cal-plate glass">
+        <div class="cal-circle"></div>
+        <p class="cal-text">sit comfortably — rest your eyes on the circle</p>
+      </div>
     </div>
   `;
 
   const el = (sel) => root.querySelector(sel);
-  const benchLine = el('.splash-bench');
-  const qualityLine = el('.splash-quality');
-  const qualitySelect = el('.quality-select');
-  const ecoNote = el('.splash-eco-note');
-  const btnCamera = el('.btn-camera');
-  const btnPlain = el('.btn-plain');
-  const fallbackNote = el('.splash-fallback-note');
+  const stepArea = el('.step-area');
   const calibration = el('.calibration');
   const calText = el('.cal-text');
 
-  qualitySelect.addEventListener('change', () => {
-    renderer.setQuality(qualitySelect.value);
-  });
-
-  // Deck picker: single-select radio behaviour.
   let deckId = 'desk-reset';
-  root.querySelectorAll('.deck-card').forEach((card) => {
-    card.addEventListener('click', () => {
-      deckId = card.dataset.deck;
-      root.querySelectorAll('.deck-card').forEach((c) => {
-        const on = c === card;
-        c.classList.toggle('selected', on);
-        c.setAttribute('aria-checked', on ? 'true' : 'false');
+  let benchmarkReady = false;
+  let benchTier = 'full';
+  let benchMedian = '0';
+
+  // Swap the step panel with a short fade; content is rebuilt each time so
+  // event listeners never go stale.
+  // `bind` runs right after the new panel is actually in the DOM — the
+  // mount itself is deferred (fade-out delay) whenever an old panel exists,
+  // so binding listeners synchronously after calling renderStep() would
+  // attach them to a NodeList queried before the new markup ever landed.
+  function renderStep(html, bind) {
+    const old = stepArea.querySelector('.step-panel');
+    const mount = () => {
+      stepArea.innerHTML = `<div class="step-panel">${html}</div>`;
+      if (bind) bind();
+      requestAnimationFrame(() => stepArea.querySelector('.step-panel').classList.remove('step-out'));
+    };
+    if (old) {
+      old.classList.add('step-out');
+      setTimeout(mount, 260);
+    } else {
+      mount();
+    }
+  }
+
+  // ---- Step 1: quality ----
+  function showQualityStep() {
+    renderStep(`
+      <p class="step-label">this machine measured ${benchMedian}ms per frame</p>
+      <div class="tile-row">
+        <button class="tile${benchTier === 'full' ? ' selected' : ''}" data-q="full">Full</button>
+        <button class="tile${benchTier === 'light' ? ' selected' : ''}" data-q="light">Light</button>
+        <button class="tile${benchTier === 'potato' ? ' selected' : ''}" data-q="potato">Eco</button>
+      </div>
+      ${benchTier === 'potato' ? '<p class="splash-eco-note">a gentler version has been prepared for this machine</p>' : ''}
+    `, () => {
+      stepArea.querySelectorAll('[data-q]').forEach((tile) => {
+        tile.addEventListener('click', () => {
+          renderer.setQuality(tile.dataset.q);
+          stepArea.querySelectorAll('[data-q]').forEach((t) => t.classList.toggle('selected', t === tile));
+          setTimeout(showCameraStep, 350);
+        });
       });
     });
-  });
+  }
+
+  // ---- Step 2: camera ----
+  function showCameraStep() {
+    renderStep(`
+      <p class="step-label">choose how you'd like to be seen</p>
+      <div class="tile-row">
+        <button class="tile" data-cam="yes">with camera</button>
+        <button class="tile" data-cam="no">without camera</button>
+      </div>
+    `, () => {
+      const camTiles = stepArea.querySelectorAll('[data-cam]');
+      camTiles.forEach((tile) => {
+        tile.addEventListener('click', async () => {
+          camTiles.forEach((t) => (t.disabled = true));
+          if (tile.dataset.cam === 'no') {
+            showPathStep();
+            return;
+          }
+          await tracking.start({ camera: true });
+          if (tracking.mode === 'fallback') {
+            renderStep(`
+              <p class="step-label">choose how you'd like to be seen</p>
+              <p class="splash-fallback-note">the camera didn't answer — guiding by hand instead</p>
+            `);
+            setTimeout(showPathStep, 1800);
+            return;
+          }
+          runCalibration();
+        });
+      });
+    });
+  }
+
+  function runCalibration() {
+    root.querySelector('.splash-inner').style.display = 'none';
+    calibration.hidden = false;
+    calText.textContent = 'sit comfortably — rest your eyes on the circle';
+    setTimeout(() => {
+      tracking.recalibrate();
+      calText.textContent = 'when you lean, the world will lean with you';
+      setTimeout(() => {
+        calibration.hidden = true;
+        root.querySelector('.splash-inner').style.display = '';
+        showPathStep();
+      }, 2000);
+    }, 3000);
+  }
+
+  // ---- Step 3: path (clicking a deck begins the session) ----
+  function showPathStep() {
+    renderStep(`
+      <p class="step-label">choose your path</p>
+      <div class="tile-row">
+        <button class="tile deck-tile" data-deck="desk-reset">
+          <span class="deck-title">desk reset</span>
+          <span class="deck-sub">5 minutes · seated</span>
+        </button>
+        <button class="tile deck-tile" data-deck="full-surface">
+          <span class="deck-title">full surface</span>
+          <span class="deck-sub">8 minutes · you will rise</span>
+        </button>
+      </div>
+    `, () => {
+      stepArea.querySelectorAll('[data-deck]').forEach((tile) => {
+        tile.addEventListener('click', () => {
+          deckId = tile.dataset.deck;
+          stepArea.querySelectorAll('[data-deck]').forEach((t) => (t.disabled = true));
+          tile.classList.add('selected');
+          begin({ deckId });
+          dismiss();
+          showHint();
+        });
+      });
+    });
+  }
 
   function showHint() {
     const overlay = document.getElementById('overlay');
     const hint = document.createElement('p');
-    hint.className = 'hint';
+    hint.className = 'hint text-plate';
     hint.textContent = TOUCH
       ? 'drag to drift — press and hold to reach'
       : 'move your mouse to drift — click and hold to reach for the light';
@@ -123,56 +200,22 @@ export function initSplash({ renderer, tracking, begin }) {
     setTimeout(() => { root.style.display = 'none'; root.classList.remove('fading'); }, 1600);
   }
 
-  function startPlain() {
-    // begin() synchronously inside the click chain (AudioContext gesture rule).
-    begin({ deckId });
-    dismiss();
-    showHint();
-  }
-
-  async function startCamera() {
-    btnCamera.disabled = true;
-    btnPlain.disabled = true;
-    await tracking.start({ camera: true });
-    if (tracking.mode === 'fallback') {
-      fallbackNote.hidden = false;
-      begin({ deckId });
-      setTimeout(() => { dismiss(); showHint(); }, 2200);
-      return;
-    }
-    // Calibration: circle, settle, recalibrate, promise of parallax.
-    el('.splash-inner').style.display = 'none';
-    calibration.hidden = false;
-    begin({ deckId }); // clock + audio start under the fading-in world
-    setTimeout(() => {
-      tracking.recalibrate();
-      calText.textContent = 'when you lean, the world will lean with you';
-      setTimeout(dismiss, 2000);
-    }, 3000);
-  }
-
-  btnPlain.addEventListener('click', startPlain);
-  btnCamera.addEventListener('click', startCamera);
-
   return {
     setBenchmark(tier, median) {
-      benchLine.classList.remove('shimmer');
-      benchLine.textContent = `this machine measured ${median}ms per frame`;
-      qualityLine.hidden = false;
-      qualitySelect.value = tier;
-      if (tier === 'potato') ecoNote.hidden = false;
-      btnCamera.disabled = false;
-      btnPlain.disabled = false;
+      benchmarkReady = true;
+      benchTier = tier;
+      benchMedian = median;
+      showQualityStep();
     },
     showEnd() {
       root.style.display = '';
       root.classList.add('fading-in');
       root.innerHTML = `
-        <div class="splash-inner splash-end">
-          <h1 class="splash-title">you're back</h1>
+        <div class="splash-inner splash-end glass">
+          <h1 class="wordmark" aria-label="you're back">${wordmarkHTML("you're back")}</h1>
           <p class="splash-subtitle">the path remains — return when your shoulders ask for it</p>
-          <div class="splash-buttons">
-            <button class="btn btn-again">begin again</button>
+          <div class="tile-row">
+            <button class="tile btn-again">begin again</button>
           </div>
           <p class="splash-credit">made by <a href="https://sinaida.eu" target="_blank" rel="noopener">Sinaida Krivchenko · sinaida.eu</a></p>
         </div>`;

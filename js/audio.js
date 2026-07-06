@@ -292,8 +292,18 @@ class AudioEngine {
       osc.stop(t + 5.2);
       osc.onended = () => { osc.disconnect(); g.disconnect(); };
     });
+    // Movement cue ping: a clear two-partial bell, distinct from the tiny
+    // pacing tick this used to be — this is the "a new instruction just
+    // arrived" signal, so it needs to actually be heard.
     events.on('cue', () => {
-      if (!this.muted) this._tone(1046, 0.02, 0.005, 0.06, this._master);
+      if (this.muted) return;
+      const mix = this.ctx.createGain();
+      mix.gain.value = 1.0;
+      mix.connect(this._master);
+      mix.connect(this._shimmerIn);
+      this._tone(1318.5, 0.05, 0.006, 0.5, mix);
+      this._tone(1318.5 * 2, 0.05 * 0.3, 0.006, 0.35, mix);
+      setTimeout(() => mix.disconnect(), 1200);
     });
     // Every verified rep pops a small bubble — physical feedback, not a chime.
     events.on('stationRep', () => {

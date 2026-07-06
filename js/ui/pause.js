@@ -43,7 +43,7 @@ export function initPause({ journey, splash, tracking, constellation }) {
 
   // ---- rest button (mirrors .mute-btn styling) ----
   const restBtn = document.createElement('button');
-  restBtn.className = 'rest-btn';
+  restBtn.className = 'corner-pill rest-btn';
   restBtn.textContent = '◦ rest';
   overlay.appendChild(restBtn);
 
@@ -55,10 +55,10 @@ export function initPause({ journey, splash, tracking, constellation }) {
   layer.hidden = true;
   layer.innerHTML = `
     <div class="pause-figure"></div>
-    <p class="pause-mantra"></p>
+    <p class="pause-mantra text-plate"></p>
     <div class="pause-buttons">
-      <button class="btn pause-return">return to the path</button>
-      <button class="btn pause-surface">surface</button>
+      <button class="tile pause-return">return to the path</button>
+      <button class="tile pause-surface">surface</button>
     </div>
   `;
   document.body.appendChild(layer);

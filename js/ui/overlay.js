@@ -13,15 +13,15 @@ export function initOverlay({ audio, splash }) {
   root.appendChild(live);
 
   const questionEl = document.createElement('p');
-  questionEl.className = 'question-text';
+  questionEl.className = 'question-text text-plate';
   live.appendChild(questionEl);
 
   const cueEl = document.createElement('p');
-  cueEl.className = 'cue-text';
+  cueEl.className = 'cue-text text-plate';
   live.appendChild(cueEl);
 
   const muteBtn = document.createElement('button');
-  muteBtn.className = 'mute-btn';
+  muteBtn.className = 'corner-pill mute-btn';
   muteBtn.textContent = '◦ sound';
   muteBtn.addEventListener('click', () => {
     audio.setMuted(!audio.muted);
