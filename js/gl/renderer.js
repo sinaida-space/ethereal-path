@@ -66,7 +66,7 @@ export class Renderer {
 
     this.loc.scene = uniformLocations(gl, this.programs.scene, [
       'uResolution', 'uTime', 'uProgress', 'uHead', 'uHandL', 'uHandR',
-      'uRays[0]', 'uLight', 'uBreathe', 'uSteps',
+      'uRays[0]', 'uLight', 'uBreathe', 'uSteps', 'uSurface',
     ]);
     this.loc.bright = uniformLocations(gl, this.programs.bright, ['uScene']);
     this.loc.blur = uniformLocations(gl, this.programs.blur, [
@@ -182,6 +182,7 @@ export class Renderer {
 
     gl.uniform1f(L.uLight, state.light);
     gl.uniform1f(L.uBreathe, state.breathe);
+    gl.uniform1f(L.uSurface, state.surface || 0);
     gl.uniform1i(L.uSteps, this.q.steps);
 
     drawFullscreen(gl, this.vao);

@@ -25,6 +25,8 @@ uniform vec4  uRays[3];   // RING semantics (v1.1): x lateral offset,
 uniform float uLight;
 uniform float uBreathe;
 uniform int   uSteps;     // quality proxy: inner shell only when uSteps > 40
+uniform float uSurface;   // Act-0 (v1.2): 1 = at the surface (splash), eases
+                          // to 0 on begin — the dive into the tunnel
 
 // --- OFF-AXIS CAMERA (do not modify in #4/#6) ---------------------------
 // The screen is a fixed virtual window in world space at z = 0. The eye sits
@@ -148,6 +150,48 @@ float filaments(vec3 hit, vec2 axis, float flowT, float swirl, float iso) {
   return exp(-abs(v - iso) * 34.0);
 }
 
+// ---- Act-0: at the surface (v1.2) -----------------------------------------
+// Looking up from just under the water: a caustic-webbed ceiling, a soft sun,
+// bubbles rising past. Two noise evals for the caustics + one mote layer —
+// cheap, and only paid while uSurface > 0.
+float causticWeb(vec2 uv, float t) {
+  float n1 = vnoise3(vec3(uv * 2.0, t * 0.45));
+  float n2 = vnoise3(vec3(uv * 2.0 + 5.7, t * 0.45 + 3.1));
+  float c = 1.0 - abs(n1 - n2) * 2.4;
+  return pow(clamp(c, 0.0, 1.0), 8.0);
+}
+
+vec3 surfaceScene(Ray ray) {
+  vec3 d = normalize(ray.dir);
+  // Deep aqua gradient: brighter toward the surface overhead.
+  float up = clamp(d.y * 0.5 + 0.5, 0.0, 1.0);
+  vec3 col = mix(vec3(0.015, 0.075, 0.13), vec3(0.07, 0.34, 0.44), pow(up, 1.6));
+
+  // The water ceiling and its caustic webbing.
+  if (d.y > 0.02) {
+    float tC = (1.1 - ray.origin.y) / d.y;
+    vec2 uv = (ray.origin + d * tC).xz;
+    float c = causticWeb(uv, uTime);
+    float fade = exp(-tC * 0.07);
+    col += vec3(0.45, 0.9, 1.0) * c * fade * 1.25;
+  }
+  // Soft god-ray shafts slanting down from the sun side.
+  float shaft = vnoise3(vec3(d.x * 4.0 - d.y * 2.0 + uTime * 0.06, d.z * 4.0, uTime * 0.05));
+  col += vec3(0.30, 0.62, 0.72) * pow(shaft, 3.0) * clamp(d.y + 0.55, 0.0, 1.0) * 0.30;
+
+  // Sun disk refracted through the surface — bright core crosses the bloom
+  // threshold; soft halo stays ambient.
+  vec3 sunDir = normalize(vec3(0.25, 1.0, -0.35));
+  float sd = max(dot(d, sunDir), 0.0);
+  col += vec3(0.95, 1.0, 0.95) * (pow(sd, 48.0) * 1.6 + pow(sd, 6.0) * 0.22);
+
+  // Bubbles rising past the eye.
+  vec3 bp = ray.origin + d * 2.5;
+  col += vec3(0.8, 0.97, 1.05) * moteLayer(bp + vec3(0.0, -uTime * 0.45, 0.0), 3.0, 77.0) * 1.3;
+
+  return col;
+}
+
 // ---- the ring: analytic torus glow with a growing arc ---------------------
 vec3 ringGlow(Ray ray, vec4 R, float breatheGlow) {
   if (R.w < 0.01) return vec3(0.0);
@@ -246,6 +290,11 @@ void main() {
   float throat = 1.0 - exp(-abs(hitW.z) * 0.085);      // 1 = far darkness
   vec3 throatCol = mix(vec3(0.0), vec3(0.85, 0.93, 1.0) * 1.2, mRet);
   col = mix(col, throatCol, throat * (0.75 + 0.25 * mRet));
+
+  // ---- Act-0 crossfade: the surface passes overhead as we dive ----
+  if (uSurface > 0.003) {
+    col = mix(col, surfaceScene(ray), uSurface);
+  }
 
   // ---- the ring (active station gate) ----
   col += ringGlow(ray, uRays[0], breatheGlow);

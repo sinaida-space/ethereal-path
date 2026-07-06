@@ -4,14 +4,28 @@
 
 const QUALITY_LABELS = { full: 'Full', light: 'Light', potato: 'Eco' };
 
-const INTRO_COPY =
-  'This is a moving artwork — a window into water and stars. It watches ' +
-  'how you lean and reach (if you allow the camera) and turns your movement ' +
-  'into light. Nothing you do is recorded; nothing leaves this device. It ' +
-  'asks only for five minutes, your shoulders, and one honest answer you ' +
-  'never have to say out loud.';
+// The 5-second promise, then how it works, then privacy — in that order.
+const PROMISE_COPY =
+  'a short movement ritual for people who live at their screens';
+const HOW_COPY =
+  'luminous rings gate the path. each ring closes when your body actually ' +
+  'moves — a neck turn, a shoulder roll, a reach. minutes later you surface, warmer.';
+const PRIVACY_COPY =
+  'the camera (if you allow it) verifies movement on this device only — ' +
+  'nothing is recorded, nothing leaves.';
 
+// Deck ids must match data/decks.json.
 const TOUCH = 'ontouchstart' in window;
+
+// Wordmark letters as individual spans so the goo filter can merge them
+// while they drift on offset phases — text behaving like water.
+function wordmarkHTML(text) {
+  return [...text].map((ch, i) =>
+    ch === ' '
+      ? '<span class="wm-gap"></span>'
+      : `<span class="wm-l" style="--i:${i}">${ch}</span>`
+  ).join('');
+}
 
 export function initSplash({ renderer, tracking, begin }) {
   const root = document.getElementById('splash');
@@ -20,16 +34,22 @@ export function initSplash({ renderer, tracking, begin }) {
   root.setAttribute('aria-label', 'Ethereal Path introduction');
 
   root.innerHTML = `
-    <div class="splash-inner">
-      <h1 class="splash-title">ETHEREAL PATH</h1>
-      <p class="splash-subtitle">a five-minute descent for bodies that sit too long</p>
+    <div class="splash-inner glass">
+      <h1 class="wordmark" aria-label="ethereal path">${wordmarkHTML('ethereal path')}</h1>
+      <p class="splash-subtitle">${PROMISE_COPY}</p>
       <hr class="hairline">
-      <p class="splash-intro">${INTRO_COPY}</p>
-      <p class="splash-credit">
-        created by <a href="https://sinaida.eu" target="_blank" rel="noopener">Sinaida Krivchenko — sinaida.eu</a>
-      </p>
-      <p class="splash-warning">&#9888; real-time graphics — this may run warm on older machines</p>
-      <hr class="hairline">
+      <p class="splash-intro">${HOW_COPY}</p>
+      <p class="splash-privacy">${PRIVACY_COPY}</p>
+      <div class="deck-picker" role="radiogroup" aria-label="choose your practice">
+        <button class="deck-card selected" data-deck="desk-reset" role="radio" aria-checked="true">
+          <span class="deck-title">desk reset</span>
+          <span class="deck-sub">5 minutes · seated</span>
+        </button>
+        <button class="deck-card" data-deck="full-surface" role="radio" aria-checked="false">
+          <span class="deck-title">full surface</span>
+          <span class="deck-sub">8 minutes · you will rise</span>
+        </button>
+      </div>
       <p class="splash-bench shimmer">measuring this machine's light&hellip;</p>
       <p class="splash-quality" hidden>
         quality:
@@ -45,6 +65,9 @@ export function initSplash({ renderer, tracking, begin }) {
         <button class="btn btn-plain" disabled>begin without camera</button>
       </div>
       <p class="splash-fallback-note" hidden>the camera didn't answer — guiding by hand instead</p>
+      <p class="splash-credit">
+        created by <a href="https://sinaida.eu" target="_blank" rel="noopener">Sinaida Krivchenko — sinaida.eu</a>
+      </p>
     </div>
     <div class="calibration" hidden>
       <div class="cal-circle"></div>
@@ -65,6 +88,19 @@ export function initSplash({ renderer, tracking, begin }) {
 
   qualitySelect.addEventListener('change', () => {
     renderer.setQuality(qualitySelect.value);
+  });
+
+  // Deck picker: single-select radio behaviour.
+  let deckId = 'desk-reset';
+  root.querySelectorAll('.deck-card').forEach((card) => {
+    card.addEventListener('click', () => {
+      deckId = card.dataset.deck;
+      root.querySelectorAll('.deck-card').forEach((c) => {
+        const on = c === card;
+        c.classList.toggle('selected', on);
+        c.setAttribute('aria-checked', on ? 'true' : 'false');
+      });
+    });
   });
 
   function showHint() {
@@ -89,7 +125,7 @@ export function initSplash({ renderer, tracking, begin }) {
 
   function startPlain() {
     // begin() synchronously inside the click chain (AudioContext gesture rule).
-    begin();
+    begin({ deckId });
     dismiss();
     showHint();
   }
@@ -100,14 +136,14 @@ export function initSplash({ renderer, tracking, begin }) {
     await tracking.start({ camera: true });
     if (tracking.mode === 'fallback') {
       fallbackNote.hidden = false;
-      begin();
+      begin({ deckId });
       setTimeout(() => { dismiss(); showHint(); }, 2200);
       return;
     }
     // Calibration: circle, settle, recalibrate, promise of parallax.
     el('.splash-inner').style.display = 'none';
     calibration.hidden = false;
-    begin(); // clock + audio start under the fading-in world
+    begin({ deckId }); // clock + audio start under the fading-in world
     setTimeout(() => {
       tracking.recalibrate();
       calText.textContent = 'when you lean, the world will lean with you';
