@@ -20,6 +20,7 @@ import { Stations } from './stations.js';
 import { audio } from './audio.js';
 import { initSplash } from './ui/splash.js';
 import { initOverlay } from './ui/overlay.js';
+import { initPause } from './ui/pause.js';
 
 const canvas = document.getElementById('gl');
 const overlay = document.getElementById('overlay');
@@ -77,6 +78,7 @@ async function boot() {
   // Splash first: the benchmark runs behind it while the intro is read.
   const splash = initSplash({ renderer, tracking, begin });
   initOverlay({ audio, splash });
+  initPause({ journey, splash, tracking });
 
   const tier = await runBenchmark(renderer);
   const median = (renderer._median || 0).toFixed(1);
