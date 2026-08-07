@@ -8,4 +8,11 @@ Live at https://sinaida-space.github.io/ethereal-path/
 
 **Tech:** Vanilla WebGL2 + GLSL raymarching, MediaPipe Tasks, Web Audio, no frameworks, no build step.
 
-© Sinaida Krivchenko. All rights reserved.
+## License
+
+Code: Apache 2.0, see [LICENSE](LICENSE).
+Artwork, shaders as an artistic work, imagery and text: CC BY-NC-ND 4.0,
+see [LICENSE-ARTWORK](LICENSE-ARTWORK).
+Third-party code: [THIRD-PARTY.md](THIRD-PARTY.md).
+
+© 2026 Sinaida Krivchenko · [sinaida.eu](https://sinaida.eu)

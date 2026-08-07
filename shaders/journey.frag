@@ -69,6 +69,11 @@ float hash(vec2 p) {
   return fract(p.x * p.y);
 }
 
+// THIRD-PARTY NOTICE — hash3 below is `hash13` from "Hash without Sine"
+// by Dave Hoskins, https://www.shadertoy.com/view/4djSRW
+// Copyright (c) 2014 David Hoskins. SPDX-License-Identifier: MIT
+// vnoise3, moteLayer and everything downstream are original to this work.
+// See ../THIRD-PARTY.md.
 float hash3(vec3 p) {
   p = fract(p * 0.1031);
   p += dot(p, p.zyx + 31.32);
