@@ -34,6 +34,18 @@ export class Renderer {
     if (!gl) throw new Error('webgl2-unavailable');
     this.gl = gl;
 
+    // GPU driver reset, laptop sleep/wake, or a backgrounded tab reclaiming
+    // its context invalidates every texture/program/buffer. Without this,
+    // frame() would keep drawing into a dead context forever (a black,
+    // permanently frozen canvas) with no way back short of a page reload.
+    canvas.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      this._loaded = false;
+    }, false);
+    canvas.addEventListener('webglcontextrestored', () => {
+      this.load().catch((err) => console.error('renderer: failed to restore context', err));
+    }, false);
+
     this.floatSupported = !!gl.getExtension('EXT_color_buffer_float');
 
     this.tier = 'full';
@@ -133,10 +145,13 @@ export class Renderer {
     }
     this._lastT = t;
 
-    // Keep backing store in sync with any CSS-size change.
+    // Keep backing store in sync with any CSS-size change (width OR height —
+    // a height-only change, e.g. mobile browser chrome show/hide, must also
+    // trigger a resize or the backing store desyncs from the CSS box).
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const cw = Math.max(1, Math.round(this.canvas.clientWidth * dpr));
-    if (this.canvas.width !== cw) this.resize();
+    const ch = Math.max(1, Math.round(this.canvas.clientHeight * dpr));
+    if (this.canvas.width !== cw || this.canvas.height !== ch) this.resize();
 
     this._scenePass(t, state);
 

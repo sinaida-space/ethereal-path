@@ -110,6 +110,9 @@ export class FallbackSource {
     this._keys[e.key] = true;
     if (e.key === ' ' || e.code === 'Space') {
       this._keyReach = true;
+      // Without this, Space still scrolls the page underneath the
+      // full-bleed canvas — breaks the layout on a kiosk/projection setup.
+      e.preventDefault();
     }
   }
 
