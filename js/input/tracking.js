@@ -59,6 +59,12 @@ export class Tracking {
 
     this._fallback = null;
 
+    // Bumped by stop() and at the top of every start() call. An in-flight
+    // start() that resolves after a newer generation exists knows it was
+    // superseded (e.g. rapid camera-toggle) and tears itself down instead of
+    // resurrecting a stream/loop the caller already believes is off.
+    this._generation = 0;
+
     // Camera-mode internals.
     this._video = null;
     this._stream = null;
@@ -96,6 +102,7 @@ export class Tracking {
   }
 
   async start(opts = {}) {
+    const gen = ++this._generation;
     const wantsCamera = !!opts.camera;
 
     if (!wantsCamera) {
@@ -107,10 +114,12 @@ export class Tracking {
     }
 
     try {
-      await this._startCamera();
+      await this._startCamera(gen);
+      if (gen !== this._generation) return; // superseded by a later stop()/start()
       this.mode = 'camera';
       this.fallbackReason = null;
     } catch (err) {
+      if (gen !== this._generation) return; // stop() already handled teardown/mode
       this._teardownCamera();
       this.mode = 'fallback';
       this.fallbackReason = (err && err.message) || String(err) || 'unknown-error';
@@ -119,7 +128,7 @@ export class Tracking {
     }
   }
 
-  async _startCamera() {
+  async _startCamera(gen) {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw new Error('getUserMedia-unavailable');
     }
@@ -205,6 +214,20 @@ export class Tracking {
         /* ignore */
       }
       throw new Error('video-play-failed');
+    }
+
+    if (gen !== this._generation) {
+      // stop() ran while we were awaiting camera/model setup — this start()
+      // is stale. Release what was just acquired and bail without touching
+      // instance state, so we don't resurrect a stream/loop after teardown.
+      this._cleanupStream(stream);
+      video.remove();
+      try {
+        landmarker.close();
+      } catch (_) {
+        /* ignore */
+      }
+      throw new Error('stopped-during-start');
     }
 
     this._video = video;
@@ -398,12 +421,19 @@ export class Tracking {
       this._pose.ok = false;
       this.landmarks = null;
       const easeT = clamp((staleFor - STALE_MS) / EASE_BACK_MS, 0, 1);
-      // Ease remaining values back toward 0 over EASE_BACK_MS.
+      // Ease remaining values back toward 0 over EASE_BACK_MS. Pose values
+      // must ease too, not just head/hands — otherwise a station reading
+      // pose.yaw/pitch without also checking pose.ok sees the last live
+      // value frozen indefinitely once the person steps out of frame.
       this._head.x *= 1 - easeT * 0.05;
       this._head.y *= 1 - easeT * 0.05;
       this._head.z *= 1 - easeT * 0.05;
       this._handL.present *= 1 - easeT * 0.05;
       this._handR.present *= 1 - easeT * 0.05;
+      this._pose.yaw *= 1 - easeT * 0.05;
+      this._pose.pitch *= 1 - easeT * 0.05;
+      this._pose.roll *= 1 - easeT * 0.05;
+      this._pose.shrug *= 1 - easeT * 0.05;
     }
   }
 
@@ -455,6 +485,7 @@ export class Tracking {
   }
 
   stop() {
+    this._generation++; // invalidate any in-flight start()
     this._loopActive = false;
     if (this._video && this._rafHandle != null) {
       if (typeof this._video.cancelVideoFrameCallback === 'function') {

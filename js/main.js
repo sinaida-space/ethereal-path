@@ -65,20 +65,25 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
+function showFatalError(message) {
+  overlay.textContent = message;
+  overlay.style.display = 'flex';
+  overlay.style.alignItems = 'center';
+  overlay.style.justifyContent = 'center';
+  overlay.style.padding = '2rem';
+  overlay.style.textAlign = 'center';
+}
+
 async function boot() {
   let renderer;
   try {
     renderer = new Renderer(canvas);
   } catch (err) {
     if (err && err.message === 'webgl2-unavailable') {
-      overlay.textContent =
+      showFatalError(
         'Sorry — your browser or device does not support WebGL2, ' +
-        'which this experience needs. Try a recent desktop browser.';
-      overlay.style.display = 'flex';
-      overlay.style.alignItems = 'center';
-      overlay.style.justifyContent = 'center';
-      overlay.style.padding = '2rem';
-      overlay.style.textAlign = 'center';
+        'which this experience needs. Try a recent desktop browser.'
+      );
       return;
     }
     throw err;
@@ -95,7 +100,20 @@ async function boot() {
   initPause({ journey, splash, tracking, constellation, stations });
   initStationHud({ constellation });
 
-  const tier = await runBenchmark(renderer);
+  let tier;
+  try {
+    tier = await runBenchmark(renderer);
+  } catch (err) {
+    // e.g. WebGL context loss mid-benchmark (GPU driver reset). Without this,
+    // boot() throws here and the page is left hanging on a blank canvas with
+    // no message, unlike the webgl2-unavailable path above.
+    console.error('benchmark failed', err);
+    showFatalError(
+      'Something went wrong while preparing the graphics for your device. ' +
+      'Try reloading the page.'
+    );
+    return;
+  }
   const median = (renderer._median || 0).toFixed(1);
   console.log(`benchmark: ${tier} (${median}ms)`);
   renderer.setQuality(tier);
