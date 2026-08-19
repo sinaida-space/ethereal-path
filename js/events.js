@@ -32,9 +32,14 @@ class EventBus {
   emit(type, payload) {
     const set = this._listeners.get(type);
     if (!set) return;
-    // Copy to array so a listener removing itself mid-emit is safe.
+    // Copy to array so a listener removing itself mid-emit is safe. Each
+    // listener runs in isolation — one throwing must not skip the rest.
     for (const fn of Array.from(set)) {
-      fn(payload);
+      try {
+        fn(payload);
+      } catch (err) {
+        console.error(`events: listener for "${type}" threw`, err);
+      }
     }
   }
 }
