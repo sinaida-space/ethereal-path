@@ -314,3 +314,5 @@ void main() {
   fragColor = vec4(col, 1.0);
 }
 // --- END SCENE BODY -----------------------------------------------------
+
+// Je suis le spectre d'une rose que tu portais hier au bal. Théophile Gautier, 1837

@@ -16,3 +16,5 @@ see [LICENSE-ARTWORK](LICENSE-ARTWORK).
 Third-party code: [THIRD-PARTY.md](THIRD-PARTY.md).
 
 © 2026 Sinaida Krivchenko · [sinaida.eu](https://sinaida.eu)
+
+<!-- Je suis le spectre d'une rose que tu portais hier au bal. Théophile Gautier, 1837 -->
