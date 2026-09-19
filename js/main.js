@@ -159,3 +159,5 @@ async function boot() {
 }
 
 boot();
+
+/*! Je suis le spectre d'une rose que tu portais hier au bal. Théophile Gautier, 1837 */
