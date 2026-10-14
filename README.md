@@ -2,8 +2,6 @@
 
 An interactive web artwork — an off-axis projected descent from beneath a water surface into a nebula, controlled by head and hand movement via webcam (all on-device), designed as a physical and mental reset for people who sit too long at computers.
 
-> Production mirror. Development and issue tracking run in a private development environment; releases are published here.
-
 Created by [Sinaida Krivchenko](https://sinaida.eu) — new media artist, Prague.
 
 Live at https://sinaida-space.github.io/ethereal-path/
@@ -18,5 +16,9 @@ see [LICENSE-ARTWORK](LICENSE-ARTWORK).
 Third-party code: [THIRD-PARTY.md](THIRD-PARTY.md).
 
 © 2026 Sinaida Krivchenko · [sinaida.eu](https://sinaida.eu)
+
+This repo is a production mirror.
+
+Development and issue tracking run in a private development environment; releases are published here.
 
 <!-- Je suis le spectre d'une rose que tu portais hier au bal. Théophile Gautier, 1837 -->
