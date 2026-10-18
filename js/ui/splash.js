@@ -10,8 +10,8 @@ const HOW_COPY =
   'luminous rings gate the path. each ring closes when your body actually ' +
   'moves — a neck turn, a shoulder roll, a reach. minutes later you surface, warmer.';
 const PRIVACY_COPY =
-  'the camera (if you allow it) verifies movement on this device only — ' +
-  'nothing is recorded, nothing leaves.';
+  'the camera (if you allow it) reads movement on this device only. ' +
+  'nothing is recorded, and no image leaves it. <a href="privacy.html">privacy</a>';
 const PLAYLIST_URL = 'https://open.spotify.com/playlist/394UQrjBknxawNXIY8miep';
 
 const TOUCH = 'ontouchstart' in window;
