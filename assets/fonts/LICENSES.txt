@@ -1,4 +1,5 @@
 === Geist Pixel (Vercel, SIL OFL 1.1) ===
-Copyright 2026 The Geist Project Authors (https://github.com/vercel/geist-font)
+Copyright 2024 The Geist Project Authors (https://github.com/vercel/geist-font)
 License: SIL Open Font License, Version 1.1
 https://openfontlicense.org
+Full licence text: OFL-GeistPixel.txt
