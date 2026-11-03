@@ -14,6 +14,13 @@ https://www.shadertoy.com/view/4djSRW
 Used in `shaders/journey.frag` as `hash3`. The value noise, fBm and everything
 built on top of it are original to this work.
 
+## Geist Pixel
+
+`assets/fonts/geist-pixel-latin.woff2` and `assets/fonts/geist-pixel-latin-ext.woff2`.
+Copyright 2024 The Geist Project Authors. Licensed under the SIL Open Font
+License 1.1; the licence text is in `assets/fonts/OFL-GeistPixel.txt`.
+https://github.com/vercel/geist-font
+
 ## MediaPipe Tasks Vision
 
 Loaded at runtime from a CDN, not bundled here.
