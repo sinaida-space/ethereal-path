@@ -4,7 +4,7 @@
 // in fallback mode (pointer/keyboard/touch — see js/input/fallback.js).
 // Dev keybind 'c' attempts camera mode; #9's splash screen will own this UX.
 //
-// Session composition (#8): Journey drives the timed arc (progress, act,
+// Session composition: Journey drives the timed arc (progress, act,
 // breathe, light, cues); Rays drives the spawn/drift/take lifecycle and
 // question deck. Session doesn't auto-start — window.__ep.begin() starts it
 // (splash screen will call it; dev keybind 'b' for now).

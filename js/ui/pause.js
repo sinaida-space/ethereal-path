@@ -1,4 +1,4 @@
-// pause.js — stop -> mantra flow (#24): a rest button + Esc freezes the
+// pause.js — stop -> mantra flow: a rest button + Esc freezes the
 // drift, dims the tunnel (CSS, not the shader — see constellation.js note
 // and issue #24), and shows a constellation figure with one mantra, offering
 // "return to the path" or "surface" (an early, graceful exit through the

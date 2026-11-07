@@ -1,4 +1,4 @@
-// audio.js — procedural feedback layer (#9). No assets, no soundtrack:
+// audio.js — procedural feedback layer. No assets, no soundtrack:
 // a barely-there noise/drone bed plus soft one-shot voices on bus events.
 // If the user notices the music, it's too loud — the session's real
 // soundtrack is their own breathing.

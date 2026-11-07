@@ -41,7 +41,7 @@ export class Journey {
   constructor() {
     this.started = false;
     this.paused = false;
-    this.held = false; // stations (#23) freeze the drift, not the breath
+    this.held = false; // stations freeze the drift, not the breath
     this.ended = false;
 
     this.t = 0; // elapsed clock seconds (excludes paused time)
@@ -79,7 +79,7 @@ export class Journey {
   }
 
   // Stations freeze the drift clock while the user exercises; breathing and
-  // light continue so the held world stays alive. Refcounted (#30): the pause
+  // light continue so the held world stays alive. Refcounted: the pause
   // screen and an open station can hold simultaneously — resuming from pause
   // must not release the station's hold.
   hold() {

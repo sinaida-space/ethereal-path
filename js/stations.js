@@ -1,4 +1,4 @@
-// stations.js — exercise stations (#23): the warmup disguised as ritual.
+// stations.js — exercise stations: the warmup disguised as ritual.
 // The drift pauses, a broken ring appears with a cue; verified movement
 // draws the arc closed; the ring flares, releases a reflection question,
 // and the drift resumes. There are no failure states: every station also
