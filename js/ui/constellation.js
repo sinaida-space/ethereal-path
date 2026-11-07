@@ -1,4 +1,4 @@
-// constellation.js — the constellation-self (#24): landmarks drawn as a
+// constellation.js — the constellation-self: landmarks drawn as a
 // breathing star-figure, shown on calibration and the pause screen, with a
 // fullscreen shimmer echo on station completions.
 //

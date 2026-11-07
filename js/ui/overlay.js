@@ -1,4 +1,4 @@
-// overlay.js — in-journey text layer (#10): questions materialize when a ray
+// overlay.js — in-journey text layer: questions materialize when a ray
 // is taken, movement cues drift through the lower third, a mute toggle sits
 // in the corner, and sessionEnd hands control back to the splash.
 

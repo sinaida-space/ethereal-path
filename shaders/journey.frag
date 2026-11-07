@@ -1,5 +1,5 @@
 #version 300 es
-// journey.frag — v1.1: the ring tunnel (#21).
+// journey.frag — v1.1: the ring tunnel.
 // One continuous tunnel of turbulent, light-painted cyan filament on
 // near-black — closed-form cylinder shading, NO volumetric march. The
 // per-pixel cost is fixed (~3 noise stacks + optional inner shell), which is

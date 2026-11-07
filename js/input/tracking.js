@@ -19,10 +19,11 @@
 import { FallbackSource } from './fallback.js';
 
 const MEDIAPIPE_VERSION = '0.10.14';
-const MEDIAPIPE_ESM_URL = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/vision_bundle.mjs`;
-// Official mediapipe-models GCS bucket, float16 lite pose landmarker.
-const POSE_MODEL_URL =
-  'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
+// Vendored MediaPipe folder, served from this site.
+const MEDIAPIPE_BASE = new URL(`../../vendor/mediapipe/${MEDIAPIPE_VERSION}`, import.meta.url).href;
+const MEDIAPIPE_ESM_URL = `${MEDIAPIPE_BASE}/vision_bundle.mjs`;
+// float16 lite pose landmarker.
+const POSE_MODEL_URL = `${MEDIAPIPE_BASE}/models/pose_landmarker_lite.task`;
 
 const HEAD_ALPHA = 0.15;
 const HAND_ALPHA = 0.3;
@@ -84,7 +85,7 @@ export class Tracking {
     this._baselineSamples = [];
     this._baselineShoulderWidth = null;
 
-    // Pose signals for exercise verification (#22): baseline-relative,
+    // Pose signals for exercise verification: baseline-relative,
     // smoothed head yaw/pitch/roll and shoulder shrug, plus raw shoulder
     // positions for the constellation.
     this._pose = {
@@ -149,7 +150,7 @@ export class Tracking {
     let filesetResolver;
     try {
       filesetResolver = await FilesetResolver.forVisionTasks(
-        `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/wasm`
+        `${MEDIAPIPE_BASE}/wasm`
       );
     } catch (err) {
       throw new Error('mediapipe-wasm-load-failed');
@@ -327,7 +328,7 @@ export class Tracking {
     this._updatePose(nose, le, re, ls, rs, lm[LM_LEFT_HIP], lm[LM_RIGHT_HIP]);
   }
 
-  // ---- pose signals (#22): yaw/pitch from nose vs ear midpoint scaled by
+  // ---- pose signals: yaw/pitch from nose vs ear midpoint scaled by
   // ear distance, roll from the ear line, shrug from shoulder rise — all
   // baseline-relative (recalibrate() re-zeros) and EMA-smoothed.
   _updatePose(nose, le, re, ls, rs, lh, rh) {

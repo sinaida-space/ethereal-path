@@ -197,7 +197,7 @@ export class FallbackSource {
       head: { x: this._head.x, y: this._head.y, z: this._head.z, ok: this._head.ok },
       handL: { x: this._handL.x, y: this._handL.y, present: this._handL.present },
       handR: { x: this._handR.x, y: this._handR.y, present: this._handR.present },
-      // Synthesized pose (#22): the pointer drives yaw/pitch so exercise
+      // Synthesized pose: the pointer drives yaw/pitch so exercise
       // stations stay mode-blind; shrug/roll have no fallback source.
       pose: {
         yaw: this._head.x, pitch: this._head.y, roll: 0, shrug: 0,
